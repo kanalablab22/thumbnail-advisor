@@ -90,7 +90,7 @@ def build_pc_html(keyword: str, items: list, user_image: Image.Image, position: 
     item_idx = 0
     total = len(items) + 1  # +1 for user image
 
-    for i in range(min(total, 20)):
+    for i in range(min(total, 15)):
         if i == position - 1:
             # ユーザーの商品画像（ハイライト付き）
             cards_html += f'''
@@ -154,7 +154,7 @@ body {{ font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-
 }}
 
 .grid {{
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px;
     padding: 0; background: #eee; margin: 0;
 }}
 
