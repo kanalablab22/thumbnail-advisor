@@ -78,9 +78,12 @@ def _render_stars(avg: str) -> str:
     return "★" * full + ("☆" if half else "") + "☆" * empty
 
 
-def build_pc_html(keyword: str, items: list, user_image: Image.Image, position: int = 3) -> str:
+def build_pc_html(keyword: str, items: list, user_image: Image.Image, position: int = 3,
+                   user_product_name: str = "", user_product_price: str = "") -> str:
     """PC版の楽天検索結果風HTMLを生成"""
     user_data_url = _user_image_to_data_url(user_image)
+    display_name = user_product_name or f"【送料無料】{keyword} 人気 おすすめ"
+    display_price = user_product_price or "3,980"
 
     # position番目にユーザー画像を挿入
     cards_html = ""
@@ -94,11 +97,13 @@ def build_pc_html(keyword: str, items: list, user_image: Image.Image, position: 
             <div class="product-card user-card">
                 <div class="user-badge">あなたの商品</div>
                 <div class="product-image">
-                    <img src="{user_data_url}" alt="あなたの商品">
+                    <img src="{user_data_url}" alt="">
                 </div>
                 <div class="product-info">
-                    <div class="product-name">あなたの商品がここに表示されます</div>
-                    <div class="product-price">¥X,XXX</div>
+                    <div class="product-name">{display_name}</div>
+                    <div class="product-price">¥{display_price}</div>
+                    <div class="product-review"><span class="stars">★★★★☆</span> (128)</div>
+                    <div class="product-shop">あなたのショップ</div>
                 </div>
             </div>'''
         else:
@@ -204,9 +209,12 @@ body {{ font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-
 </html>'''
 
 
-def build_mobile_html(keyword: str, items: list, user_image: Image.Image, position: int = 3) -> str:
+def build_mobile_html(keyword: str, items: list, user_image: Image.Image, position: int = 3,
+                      user_product_name: str = "", user_product_price: str = "") -> str:
     """スマホ版の楽天検索結果風HTMLを生成"""
     user_data_url = _user_image_to_data_url(user_image)
+    display_name = user_product_name or f"【送料無料】{keyword} 人気 おすすめ"
+    display_price = user_product_price or "3,980"
 
     cards_html = ""
     item_idx = 0
@@ -218,10 +226,10 @@ def build_mobile_html(keyword: str, items: list, user_image: Image.Image, positi
             <div class="product-card user-card">
                 <div class="user-badge">あなたの商品</div>
                 <div class="product-image">
-                    <img src="{user_data_url}" alt="あなたの商品">
+                    <img src="{user_data_url}" alt="">
                 </div>
-                <div class="product-name">あなたの商品</div>
-                <div class="product-price">¥X,XXX</div>
+                <div class="product-name">{display_name[:40]}</div>
+                <div class="product-price">¥{display_price}</div>
             </div>'''
         else:
             if item_idx < len(items):
@@ -241,10 +249,10 @@ def build_mobile_html(keyword: str, items: list, user_image: Image.Image, positi
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=375, initial-scale=1">
 <style>
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-body {{ font-family: -apple-system, 'Hiragino Sans', sans-serif; background: #f5f5f5; }}
+body {{ font-family: -apple-system, 'Hiragino Sans', sans-serif; background: #f5f5f5; max-width: 375px; margin: 0 auto; }}
 
 .header {{
     background: #bf0000; padding: 8px 10px; display: flex; align-items: center;

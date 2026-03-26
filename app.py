@@ -455,7 +455,7 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
 
                     with tab_sp:
                         sp_html = build_mobile_html(search_keyword, items, pil_img, position=3)
-                        components.html(sp_html, height=700, scrolling=True)
+                        components.html(sp_html, height=900, scrolling=True)
 
     # 解析詳細（折りたたみ）
     with st.expander("🔬 解析データの詳細を見る"):
