@@ -99,8 +99,8 @@ try:
 except ImportError:
     HAS_SELENIUM = False
 
-# HTML版フォールバック（Selenium不要、Streamlit Cloud対応）
-from rakuten_html_sim import fetch_rakuten_search_html, fetch_rakuten_mobile_html
+# 画像ベースのシミュレーション（外部アクセス不要、Streamlit Cloud対応）
+from rakuten_search_sim import create_search_simulation, create_mobile_simulation
 
 
 def capture_rakuten_search(keyword, mobile=False):
@@ -435,37 +435,23 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
                     except Exception as e:
                         st.error(f"検索結果の取得に失敗しました: {e}")
         else:
-            # Streamlit Cloud: HTML版フォールバック（Selenium不要）
+            # Streamlit Cloud: 画像ベースのシミュレーション（外部アクセス不要）
             with tab_pc:
-                with st.spinner(f"PC版「{search_keyword}」を検索中..."):
+                with st.spinner("PC版プレビューを生成中..."):
                     try:
-                        pc_html = fetch_rakuten_search_html(search_keyword, pil_img, position=3)
-                        components.html(pc_html, height=800, scrolling=True)
+                        pc_sim = create_search_simulation(search_keyword, pil_img, position=3, competitor_images=[])
+                        st.image(pc_sim, use_container_width=True)
                     except Exception as e:
-                        st.error(f"検索結果の取得に失敗しました: {e}")
+                        st.error(f"プレビュー生成に失敗しました: {e}")
 
             with tab_sp:
-                with st.spinner(f"スマホ版「{search_keyword}」を検索中..."):
+                with st.spinner("スマホ版プレビューを生成中..."):
                     try:
-                        sp_html = fetch_rakuten_mobile_html(search_keyword, pil_img, position=3)
-                        phone_wrapper = f'''<!DOCTYPE html><html><head><meta charset="utf-8">
-<style>
-*{{margin:0;padding:0;box-sizing:border-box}}
-body{{display:flex;justify-content:center;background:transparent;padding:10px 0}}
-.phone{{width:280px;height:580px;border:6px solid #1a1a1a;border-radius:36px;overflow:hidden;position:relative;background:#fff;box-shadow:0 8px 40px rgba(0,0,0,0.15),inset 0 0 0 2px #333}}
-.phone::before{{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:90px;height:22px;background:#1a1a1a;border-radius:0 0 16px 16px;z-index:10}}
-.phone-screen{{width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}}
-.phone-screen::-webkit-scrollbar{{display:none}}
-.scroll-hint{{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.5);color:#fff;font-size:11px;padding:4px 12px;border-radius:12px;pointer-events:none;animation:fadeout 3s forwards;font-family:sans-serif}}
-@keyframes fadeout{{0%,60%{{opacity:1}}100%{{opacity:0}}}}
-</style></head><body>
-<div class="phone"><div class="phone-screen">
-<iframe srcdoc="{sp_html.replace(chr(34), '&quot;')}" style="width:100%;height:100%;border:none;"></iframe>
-</div>
-<div class="scroll-hint">↕ スクロールできます</div></div></body></html>'''
-                        components.html(phone_wrapper, height=620, scrolling=False)
+                        sp_sim = create_mobile_simulation(search_keyword, pil_img, position=3, competitor_images=[])
+                        phone_html = render_phone_mockup(sp_sim)
+                        components.html(phone_html, height=620, scrolling=False)
                     except Exception as e:
-                        st.error(f"検索結果の取得に失敗しました: {e}")
+                        st.error(f"プレビュー生成に失敗しました: {e}")
 
     # 解析詳細（折りたたみ）
     with st.expander("🔬 解析データの詳細を見る"):
