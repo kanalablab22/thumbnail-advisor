@@ -99,8 +99,8 @@ try:
 except ImportError:
     HAS_SELENIUM = False
 
-# 画像ベースのシミュレーション（外部アクセス不要、Streamlit Cloud対応）
-from rakuten_search_sim import create_search_simulation, create_mobile_simulation
+# HTML版フォールバック（Selenium不要、Streamlit Cloud対応）
+from rakuten_html_sim import fetch_rakuten_search_html, fetch_rakuten_mobile_html
 
 
 def capture_rakuten_search(keyword, mobile=False):
@@ -435,23 +435,22 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
                     except Exception as e:
                         st.error(f"検索結果の取得に失敗しました: {e}")
         else:
-            # Streamlit Cloud: 画像ベースのシミュレーション（外部アクセス不要）
+            # Streamlit Cloud: HTML版（楽天の実データを表示）
             with tab_pc:
-                with st.spinner("PC版プレビューを生成中..."):
+                with st.spinner(f"PC版「{search_keyword}」を検索中..."):
                     try:
-                        pc_sim = create_search_simulation(search_keyword, pil_img, position=3, competitor_images=[])
-                        st.image(pc_sim, use_container_width=True)
+                        pc_html = fetch_rakuten_search_html(search_keyword, pil_img, position=3)
+                        components.html(pc_html, height=800, scrolling=True)
                     except Exception as e:
-                        st.error(f"プレビュー生成に失敗しました: {e}")
+                        st.error(f"検索結果の取得に失敗しました: {e}")
 
             with tab_sp:
-                with st.spinner("スマホ版プレビューを生成中..."):
+                with st.spinner(f"スマホ版「{search_keyword}」を検索中..."):
                     try:
-                        sp_sim = create_mobile_simulation(search_keyword, pil_img, position=3, competitor_images=[])
-                        phone_html = render_phone_mockup(sp_sim)
-                        components.html(phone_html, height=620, scrolling=False)
+                        sp_html = fetch_rakuten_mobile_html(search_keyword, pil_img, position=3)
+                        components.html(sp_html, height=700, scrolling=True)
                     except Exception as e:
-                        st.error(f"プレビュー生成に失敗しました: {e}")
+                        st.error(f"検索結果の取得に失敗しました: {e}")
 
     # 解析詳細（折りたたみ）
     with st.expander("🔬 解析データの詳細を見る"):

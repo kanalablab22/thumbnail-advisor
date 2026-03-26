@@ -30,13 +30,10 @@ def fetch_rakuten_search_html(keyword: str, user_image: Image.Image, position: i
     session.headers.update(headers)
 
     try:
-        # Cookieを取得
-        session.get("https://www.rakuten.co.jp/", timeout=10)
-
-        # 検索結果を取得
+        # 検索結果を直接取得（Cookie取得ステップは不要）
         encoded = urllib.parse.quote(keyword)
         url = f"https://search.rakuten.co.jp/search/mall/{encoded}/"
-        resp = session.get(url, timeout=10)
+        resp = session.get(url, timeout=20)
         resp.raise_for_status()
         html = resp.text
 
@@ -138,11 +135,9 @@ def fetch_rakuten_mobile_html(keyword: str, user_image: Image.Image, position: i
     session.headers.update(headers)
 
     try:
-        session.get("https://www.rakuten.co.jp/", timeout=10)
-
         encoded = urllib.parse.quote(keyword)
         url = f"https://search.rakuten.co.jp/search/mall/{encoded}/"
-        resp = session.get(url, timeout=10)
+        resp = session.get(url, timeout=20)
         resp.raise_for_status()
         html = resp.text
 
