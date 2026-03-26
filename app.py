@@ -275,13 +275,10 @@ with col_up:
         accept_multiple_files=True,
     )
 with col_kw:
-    if HAS_SELENIUM:
-        search_keyword = st.text_input(
-            "🔍 検索キーワード（検索結果プレビュー用）",
-            placeholder="例：財布 レディース 本革",
-        )
-    else:
-        search_keyword = ""
+    search_keyword = st.text_input(
+        "🔍 検索キーワード（検索結果プレビュー用）",
+        placeholder="例：財布 レディース 本革",
+    )
 
 if not uploaded_files:
     st.info("👆 上のエリアにサムネイル画像をドロップしてください（複数OK）")
