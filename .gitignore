@@ -1,5 +1,7 @@
 __pycache__/
-*.pyc
+.DS_Store
+.streamlit/secrets.toml
+.fonts/
 _screenshot.png
 test_*.png
 template_search.png
