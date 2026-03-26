@@ -454,7 +454,7 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
                         components.html(pc_html, height=800, scrolling=True)
 
                     with tab_sp:
-                        sp_html = build_mobile_html(search_keyword, items, pil_img, position=3)
+                        sp_html = build_mobile_html(search_keyword, items, pil_img, position=5)
                         components.html(sp_html, height=900, scrolling=True)
 
     # 解析詳細（折りたたみ）
