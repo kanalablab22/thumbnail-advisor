@@ -300,9 +300,15 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
 
     with col_result:
         with st.spinner("解析中..."):
-            report = check_image(pil_img, uploaded_file.name)
-            total = report.score
-            grade, grade_msg = get_grade(total)
+            try:
+                report = check_image(pil_img, uploaded_file.name)
+                total = report.score
+                grade, grade_msg = get_grade(total)
+            except Exception as e:
+                st.error(f"解析エラー: {type(e).__name__}: {e}")
+                import traceback
+                st.code(traceback.format_exc())
+                st.stop()
 
         # 総合スコア
         st.markdown(f"""
