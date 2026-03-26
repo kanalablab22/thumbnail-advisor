@@ -15,7 +15,7 @@ def search_rakuten_items(keyword: str, app_id: str, hits: int = 12, access_key: 
     楽天商品検索APIで商品データを取得
     Returns: [{name, price, image_url, shop_name, review_avg, review_count}, ...]
     """
-    url = "https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601"
+    url = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20220601"
     params = {
         "applicationId": app_id,
         "keyword": keyword,
@@ -25,7 +25,11 @@ def search_rakuten_items(keyword: str, app_id: str, hits: int = 12, access_key: 
     }
     if access_key:
         params["accessKey"] = access_key
-    resp = requests.get(url, params=params, timeout=15)
+    headers = {
+        "Referer": "https://thumbnail-advisor-6qspbn26sdqwlcryashtjn.streamlit.app/",
+        "Origin": "https://thumbnail-advisor-6qspbn26sdqwlcryashtjn.streamlit.app",
+    }
+    resp = requests.get(url, params=params, headers=headers, timeout=15)
     resp.raise_for_status()
     data = resp.json()
 
