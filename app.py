@@ -153,10 +153,13 @@ def capture_rakuten_search(keyword, mobile=False):
             """)
             _time.sleep(0.5)
 
-        min_size = 80
-        imgs = driver.find_elements(By.CSS_SELECTOR, ".searchresultitem:not([data-card-type='cpc']) img")
-        if len(imgs) < 3:
+        min_size = 100 if mobile else 80
+        if mobile:
             imgs = driver.find_elements(By.CSS_SELECTOR, "img")
+        else:
+            imgs = driver.find_elements(By.CSS_SELECTOR, ".searchresultitem:not([data-card-type='cpc']) img")
+            if len(imgs) < 3:
+                imgs = driver.find_elements(By.CSS_SELECTOR, "img")
         thumb_data = []
         for img in imgs:
             src = img.get_attribute("src") or ""
@@ -190,7 +193,7 @@ def capture_rakuten_search(keyword, mobile=False):
     return screenshot, thumb_data
 
 
-def composite_on_screenshot(screenshot, thumb_data, user_img, slot_index=0):
+def composite_on_screenshot(screenshot, thumb_data, user_img, slot_index=2):
     """スクショのサムネ位置にユーザー画像を合成"""
     result = screenshot.copy()
     if slot_index >= len(thumb_data):
@@ -404,7 +407,7 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
                 try:
                     screenshot, thumb_data = capture_rakuten_search(search_keyword, mobile=False)
                     if thumb_data:
-                        preview = composite_on_screenshot(screenshot, thumb_data, pil_img, slot_index=0)
+                        preview = composite_on_screenshot(screenshot, thumb_data, pil_img, slot_index=2)
                         st.image(preview, use_container_width=True)
                     else:
                         st.warning("サムネイルの検出に失敗しました。キーワードを変えて試してみてください。")
@@ -416,7 +419,7 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
                 try:
                     screenshot_sp, thumb_data_sp = capture_rakuten_search(search_keyword, mobile=True)
                     if thumb_data_sp:
-                        preview_sp = composite_on_screenshot(screenshot_sp, thumb_data_sp, pil_img, slot_index=0)
+                        preview_sp = composite_on_screenshot(screenshot_sp, thumb_data_sp, pil_img, slot_index=2)
                         phone_html = render_phone_mockup(preview_sp)
                         components.html(phone_html, height=620, scrolling=False)
                     else:
