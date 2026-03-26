@@ -10,7 +10,7 @@ from io import BytesIO
 from PIL import Image
 
 
-def search_rakuten_items(keyword: str, app_id: str, hits: int = 12) -> list:
+def search_rakuten_items(keyword: str, app_id: str, hits: int = 12, access_key: str = "") -> list:
     """
     楽天商品検索APIで商品データを取得
     Returns: [{name, price, image_url, shop_name, review_avg, review_count}, ...]
@@ -23,6 +23,8 @@ def search_rakuten_items(keyword: str, app_id: str, hits: int = 12) -> list:
         "sort": "standard",
         "imageFlag": 1,
     }
+    if access_key:
+        params["accessKey"] = access_key
     resp = requests.get(url, params=params, timeout=15)
     resp.raise_for_status()
     data = resp.json()

@@ -437,12 +437,13 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
         else:
             # Streamlit Cloud: 楽天API版（実際の商品データを表示）
             rakuten_app_id = st.secrets.get("RAKUTEN_APP_ID", "")
+            rakuten_access_key = st.secrets.get("RAKUTEN_ACCESS_KEY", "")
             if not rakuten_app_id:
                 st.warning("検索結果プレビューを表示するには楽天APIキーの設定が必要です。")
             else:
                 with st.spinner(f"「{search_keyword}」を検索中..."):
                     try:
-                        items = search_rakuten_items(search_keyword, rakuten_app_id, hits=12)
+                        items = search_rakuten_items(search_keyword, rakuten_app_id, hits=12, access_key=rakuten_access_key)
                     except Exception as e:
                         items = []
                         st.error(f"楽天API取得エラー: {e}")
