@@ -11,11 +11,12 @@ from dataclasses import dataclass
 @dataclass
 class CheckResult:
     """チェック結果を格納するデータクラス"""
-    name: str           # チェック項目名
+    name: str           # チェック項目ID（CRITERIA_INFOのキー）
     passed: bool        # True=OK, False=NG
     value: str          # 数値や結果の表示用文字列
     detail: str         # 詳細・改善アドバイス
-    level: str = "ok"   # "ok", "ng", "warn"
+    level: str = "ok"   # "ok"=low, "warn"=medium, "ng"=high
+    score_value: int = 3  # 1-5のスコア値
 
 
 @dataclass
@@ -27,6 +28,7 @@ class ImageCheckReport:
     results: list       # CheckResult のリスト
     annotated_image: Image.Image  # 注釈付き画像
     score: int = 0      # 総合スコア（100点満点）
+    analysis_data: dict = None  # 解析生データ
 
     @staticmethod
     def calc_score(results: list) -> int:
@@ -278,7 +280,7 @@ def _compute_scores(analysis: dict) -> dict:
     sb = analysis["background"]["simple_blocks"]
     has_border = analysis["background"]["has_border"]
     if has_border:
-        scores["background"] = min(2, sb // 5)
+        scores["background"] = max(1, min(2, sb // 5))
     elif sb >= 12:
         scores["background"] = 5
     elif sb >= 8:
@@ -348,7 +350,7 @@ def _compute_scores(analysis: dict) -> dict:
 # ===== 評価項目の情報（楽天版） =====
 CRITERIA_INFO = {
     "whitespace": {
-        "icon": "⬜", "name": "余白（呼吸感）",
+        "icon": "⬜", "name": "whitespace", "display_name": "余白（呼吸感）",
         "weight": 1.2,
         "ref_score": 5,
         "advice": {
@@ -360,7 +362,7 @@ CRITERIA_INFO = {
         },
     },
     "text_amount": {
-        "icon": "🔤", "name": "テキスト量",
+        "icon": "🔤", "name": "text_amount", "display_name": "テキスト量",
         "weight": 1.2,
         "ref_score": 5,
         "advice": {
@@ -372,7 +374,7 @@ CRITERIA_INFO = {
         },
     },
     "background": {
-        "icon": "🖼️", "name": "背景のシンプルさ",
+        "icon": "🖼️", "name": "background", "display_name": "背景のシンプルさ",
         "weight": 1.0,
         "ref_score": 5,
         "advice": {
@@ -384,7 +386,7 @@ CRITERIA_INFO = {
         },
     },
     "color_tone": {
-        "icon": "🎨", "name": "色使い・トーン",
+        "icon": "🎨", "name": "color_tone", "display_name": "色使い・トーン",
         "weight": 0.8,
         "ref_score": 5,
         "advice": {
@@ -396,7 +398,7 @@ CRITERIA_INFO = {
         },
     },
     "photo_quality": {
-        "icon": "📸", "name": "写真のクオリティ",
+        "icon": "📸", "name": "photo_quality", "display_name": "写真のクオリティ",
         "weight": 0.8,
         "ref_score": 5,
         "advice": {
@@ -408,7 +410,7 @@ CRITERIA_INFO = {
         },
     },
     "composition": {
-        "icon": "📐", "name": "構図・レイアウト",
+        "icon": "📐", "name": "composition", "display_name": "構図・レイアウト",
         "weight": 1.0,
         "ref_score": 5,
         "advice": {
@@ -420,7 +422,7 @@ CRITERIA_INFO = {
         },
     },
     "color_variation": {
-        "icon": "🌈", "name": "カラバリ表示",
+        "icon": "🌈", "name": "color_variation", "display_name": "カラバリ表示",
         "weight": 0.7,
         "ref_score": 4,
         "advice": {
@@ -430,6 +432,11 @@ CRITERIA_INFO = {
             4: {"p": "low", "t": "良いカラバリ表示です", "d": "色展開がわかりやすく表示されています"},
             5: {"p": "low", "t": "完璧なカラバリ表示！", "d": "色の豊富さが一目で伝わります"},
         },
+    },
+    "border": {
+        "icon": "🚫", "name": "border", "display_name": "枠線検出",
+        "weight": 0, "ref_score": 5,
+        "advice": {},
     },
 }
 
@@ -458,11 +465,8 @@ def _get_grade(score: int) -> tuple:
         return "D", "大幅な改善チャンス！まず余白とテキスト量から"
 
 
-def check_image(image: Image.Image, filename: str = "image.jpg") -> tuple:
-    """
-    画像を解析して ImageCheckReport + analysis + scores を返す
-    Returns: (report, analysis, scores, total_score, grade, grade_msg)
-    """
+def check_image(image: Image.Image, filename: str = "image.jpg") -> "ImageCheckReport":
+    """画像を解析して ImageCheckReport を返す"""
     analysis = _analyze_image(image)
     scores = _compute_scores(analysis)
     total_score = _calc_total(scores)
@@ -471,25 +475,29 @@ def check_image(image: Image.Image, filename: str = "image.jpg") -> tuple:
     # チェック結果をリスト化
     results = []
     for cid, info in CRITERIA_INFO.items():
+        if not info.get("advice"):
+            continue
         s = scores.get(cid, 3)
         adv = info["advice"][s]
-        level = "ok" if adv["p"] == "low" else ("warn" if adv["p"] == "medium" else "ng")
+        level = adv["p"]  # "low", "medium", "high"
         results.append(CheckResult(
-            name=info["name"],
-            passed=(level != "ng"),
-            value=f"{'★' * s}{'☆' * (5 - s)}",
+            name=cid,
+            passed=(level != "high"),
+            value=adv["t"],
             detail=adv["d"],
             level=level,
+            score_value=s,
         ))
 
     # 枠線チェック（楽天ガイドラインで禁止）
     if analysis["background"]["has_border"]:
         results.append(CheckResult(
-            name="枠線検出",
+            name="border",
             passed=False,
-            value="枠線あり",
+            value="枠線が検出されました",
             detail="楽天ガイドラインで枠線の使用は禁止されています。枠線を削除してください",
-            level="ng",
+            level="high",
+            score_value=1,
         ))
 
     # annotated_image（元画像をそのまま使用）
@@ -502,6 +510,24 @@ def check_image(image: Image.Image, filename: str = "image.jpg") -> tuple:
 
     score = total_score
 
+    # analysis_dataをフラットにまとめる（app.pyの解析詳細表示用）
+    flat_analysis = {
+        "whitespace_ratio": analysis["whitespace"]["ratio"],
+        "whitespace_effective": analysis["whitespace"]["effective"],
+        "edge_density": analysis["text_amount"]["edge_density"],
+        "text_area": analysis["text_amount"]["estimated_text_area"],
+        "simple_blocks": analysis["background"]["simple_blocks"],
+        "has_border": analysis["background"]["has_border"],
+        "avg_saturation": analysis["color_tone"]["avg_saturation"],
+        "high_sat_ratio": analysis["color_tone"]["high_sat_ratio"],
+        "n_colors": analysis["color_tone"]["n_colors"],
+        "contrast": analysis["photo_quality"]["contrast"],
+        "brightness": analysis["photo_quality"]["brightness"],
+        "sharpness": analysis["photo_quality"]["sharpness"],
+        "content_ratio": analysis["composition"]["content_ratio"],
+        "center_focus": analysis["composition"]["center_focus"],
+    }
+
     report = ImageCheckReport(
         filename=filename,
         width=image.width,
@@ -509,6 +535,7 @@ def check_image(image: Image.Image, filename: str = "image.jpg") -> tuple:
         results=results,
         annotated_image=annotated,
         score=score,
+        analysis_data=flat_analysis,
     )
 
-    return report, analysis, scores, total_score, grade, grade_msg
+    return report
