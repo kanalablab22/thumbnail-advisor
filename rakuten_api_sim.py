@@ -94,8 +94,7 @@ def build_pc_html(keyword: str, items: list, user_image: Image.Image, position: 
         if i == position - 1:
             # ユーザーの商品画像（ハイライト付き）
             cards_html += f'''
-            <div class="product-card user-card">
-                <div class="user-badge">あなたの商品</div>
+            <div class="product-card">
                 <div class="product-image">
                     <img src="{user_data_url}" alt="">
                 </div>
@@ -223,8 +222,7 @@ def build_mobile_html(keyword: str, items: list, user_image: Image.Image, positi
     for i in range(min(total, 12)):
         if i == position - 1:
             cards_html += f'''
-            <div class="product-card user-card">
-                <div class="user-badge">あなたの商品</div>
+            <div class="product-card">
                 <div class="product-image">
                     <img src="{user_data_url}" alt="">
                 </div>
