@@ -450,7 +450,7 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
 
                 if items:
                     with tab_pc:
-                        pc_html = build_pc_html(search_keyword, items, pil_img, position=3)
+                        pc_html = build_pc_html(search_keyword, items, pil_img, position=8)
                         components.html(pc_html, height=800, scrolling=True)
 
                     with tab_sp:
