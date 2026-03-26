@@ -72,7 +72,7 @@ GENRE_KEYWORDS = {
 GENRE_ADVICE = {
     "バッグ・財布": {
         "icon": "👜",
-        "reference_shops": "LASIEM / MURA / LIZDAYS",
+        "reference_shops": "LASIEM / ATAO / LIZDAYS",
         "tips": [
             {
                 "title": "撮影は斜め45度が定番",
