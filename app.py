@@ -101,7 +101,7 @@ except ImportError:
 
 # 楽天API版（Streamlit Cloud対応、ボットブロック回避）
 from rakuten_api_sim import search_rakuten_items, build_pc_html, build_mobile_html
-from genre_advisor import get_genre_advice
+from genre_advisor import get_genre_advice, adjust_advice_for_genre
 
 
 def capture_rakuten_search(keyword, mobile=False):
@@ -350,9 +350,11 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
             """, unsafe_allow_html=True)
 
     # 改善アドバイス（フル幅で表示）
+    # ジャンル・素材に応じてアドバイスを差し替え
+    adjusted_results = adjust_advice_for_genre(report.results, search_keyword) if search_keyword else report.results
     improvements = []
     good_points = []
-    for result in report.results:
+    for result in adjusted_results:
         item = {
             "icon": CRITERIA_INFO.get(result.name, {}).get("icon", "📊"),
             "name": CRITERIA_INFO.get(result.name, {}).get("display_name", result.name),

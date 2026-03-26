@@ -273,6 +273,84 @@ DEFAULT_ADVICE = {
 }
 
 
+# ===== キーワードに基づくアドバイス差し替えルール =====
+# 特定の素材・商品特性に応じて、汎用アドバイスが不適切な場合に差し替える
+ADVICE_OVERRIDES = {
+    "photo_quality": {
+        # 木製品: マット感ではなく木の質感を活かすアドバイス
+        "木製": {
+            1: {"p": "high", "t": "木の質感が伝わる撮影を", "d": "自然光で木目や色味が正確に伝わるよう撮影しましょう。暖かみのあるライティングが木製品には最適です"},
+            2: {"p": "medium", "t": "ライティングで木目を活かす", "d": "斜めからの柔らかい光で木目の陰影を引き出すと、素材の良さが伝わります。直射光は木の色味が飛ぶので避けて"},
+            3: {"p": "medium", "t": "木の温かみを活かす写真に", "d": "木製品は自然な色味が大切。彩度を下げすぎず、木本来の温かみや質感が伝わるトーン調整を心がけましょう"},
+        },
+        # レザー製品: 革の質感を活かすアドバイス
+        "革": {
+            1: {"p": "high", "t": "革の質感が伝わる撮影を", "d": "革のシボや光沢感が伝わるよう、ディフューズ光で柔らかく照らしましょう。寄りのカットで素材感もアピール"},
+            2: {"p": "medium", "t": "ライティングで革の表情を引き出す", "d": "斜めからの光で革のシボや艶感を引き出すと、高級感が格段にアップします"},
+            3: {"p": "medium", "t": "革の高級感を活かすトーンに", "d": "やや暗めのトーンで深みを出すと革製品の高級感が際立ちます。明るすぎると安っぽく見えることも"},
+        },
+        # 食品: シズル感のアドバイス
+        "食品": {
+            1: {"p": "high", "t": "美味しそうに見える撮影を", "d": "シズル感が命！自然光＋反射板で食材の色味やツヤを引き出しましょう。暖色系のライティングが食品には効果的"},
+            2: {"p": "medium", "t": "食欲をそそるライティングに", "d": "食品は暖色寄りの光が効果的。冷たい蛍光灯は避けて、自然光や暖色LEDで撮影すると美味しそうに見えます"},
+            3: {"p": "medium", "t": "食品の色味を調整", "d": "撮影後の補正では暖色寄り＆彩度やや高めが食品は映えます。ただし実物と色が違いすぎるのはNG"},
+        },
+    },
+}
+
+# キーワードから素材・特性を検出するマッピング
+MATERIAL_KEYWORDS = {
+    "木製": ["木製", "天然木", "ウッド", "木目", "無垢", "桐", "檜", "パイン", "オーク", "ウォールナット", "竹"],
+    "革": ["本革", "革", "レザー", "牛革", "ヌメ革", "クロコ", "パイソン", "合皮", "PUレザー"],
+    "食品": ["食品", "スイーツ", "肉", "魚", "蟹", "カニ", "えび", "フルーツ", "ケーキ", "チョコ", "グルメ",
+             "米", "パン", "ラーメン", "餃子", "冷凍", "干し芋", "おつまみ", "ナッツ"],
+}
+
+
+def detect_material(keyword: str) -> str:
+    """キーワードから素材・特性を検出"""
+    for material, kws in MATERIAL_KEYWORDS.items():
+        for kw in kws:
+            if kw in keyword:
+                return material
+    return None
+
+
+def adjust_advice_for_genre(results: list, keyword: str) -> list:
+    """ジャンル・素材に応じてアドバイス文を差し替える"""
+    material = detect_material(keyword)
+    if not material:
+        genre = detect_genre(keyword)
+        if genre == "食品・グルメ":
+            material = "食品"
+        elif genre == "バッグ・財布":
+            material = "革"
+
+    if not material:
+        return results
+
+    overrides = ADVICE_OVERRIDES.get("photo_quality", {}).get(material, {})
+    if not overrides:
+        return results
+
+    adjusted = []
+    for r in results:
+        if r.name == "photo_quality" and r.score_value in overrides:
+            override = overrides[r.score_value]
+            from image_checker import CheckResult
+            adjusted.append(CheckResult(
+                name=r.name,
+                passed=r.passed,
+                value=override["t"],
+                detail=override["d"],
+                level=override["p"],
+                score_value=r.score_value,
+            ))
+        else:
+            adjusted.append(r)
+    return adjusted
+
+
 def detect_genre(keyword: str) -> str:
     """検索キーワードからジャンルを判別する"""
     keyword_lower = keyword.lower()
