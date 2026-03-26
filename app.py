@@ -99,8 +99,8 @@ try:
 except ImportError:
     HAS_SELENIUM = False
 
-# HTML版フォールバック（Selenium不要、Streamlit Cloud対応）
-from rakuten_html_sim import fetch_rakuten_search_html, fetch_rakuten_mobile_html
+# 楽天API版（Streamlit Cloud対応、ボットブロック回避）
+from rakuten_api_sim import search_rakuten_items, build_pc_html, build_mobile_html
 
 
 def capture_rakuten_search(keyword, mobile=False):
@@ -435,22 +435,26 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
                     except Exception as e:
                         st.error(f"検索結果の取得に失敗しました: {e}")
         else:
-            # Streamlit Cloud: HTML版（楽天の実データを表示）
-            with tab_pc:
-                with st.spinner(f"PC版「{search_keyword}」を検索中..."):
+            # Streamlit Cloud: 楽天API版（実際の商品データを表示）
+            rakuten_app_id = st.secrets.get("RAKUTEN_APP_ID", "")
+            if not rakuten_app_id:
+                st.warning("検索結果プレビューを表示するには楽天APIキーの設定が必要です。")
+            else:
+                with st.spinner(f"「{search_keyword}」を検索中..."):
                     try:
-                        pc_html = fetch_rakuten_search_html(search_keyword, pil_img, position=3)
-                        components.html(pc_html, height=800, scrolling=True)
+                        items = search_rakuten_items(search_keyword, rakuten_app_id, hits=12)
                     except Exception as e:
-                        st.error(f"検索結果の取得に失敗しました: {e}")
+                        items = []
+                        st.error(f"楽天API取得エラー: {e}")
 
-            with tab_sp:
-                with st.spinner(f"スマホ版「{search_keyword}」を検索中..."):
-                    try:
-                        sp_html = fetch_rakuten_mobile_html(search_keyword, pil_img, position=3)
+                if items:
+                    with tab_pc:
+                        pc_html = build_pc_html(search_keyword, items, pil_img, position=3)
+                        components.html(pc_html, height=800, scrolling=True)
+
+                    with tab_sp:
+                        sp_html = build_mobile_html(search_keyword, items, pil_img, position=3)
                         components.html(sp_html, height=700, scrolling=True)
-                    except Exception as e:
-                        st.error(f"検索結果の取得に失敗しました: {e}")
 
     # 解析詳細（折りたたみ）
     with st.expander("🔬 解析データの詳細を見る"):
