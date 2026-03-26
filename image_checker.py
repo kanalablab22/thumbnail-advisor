@@ -87,9 +87,23 @@ def _analyze_image(pil_img: Image.Image) -> dict:
     h, w = img_gray.shape
     results = {}
 
-    # ----- 1. 余白率（白〜ライトグレー領域の割合）-----
+    # ----- 1. 余白率（均一な空間の割合）-----
+    # 従来: 白ピクセル(>235)だけカウント → ベージュ・グレー背景が不当に低評価
+    # 改善: 白ピクセル + 均一領域（低分散ブロック）も余白としてカウント
     whitespace_mask = img_gray > 235
     whitespace_ratio = np.sum(whitespace_mask) / (h * w)
+
+    # 均一領域の検出（8x8ブロックで分散が低い＝シンプルな空間）
+    block_size = max(h, w) // 8
+    uniform_pixels = 0
+    for bi in range(8):
+        for bj in range(8):
+            block = img_gray[bi * block_size:min((bi + 1) * block_size, h),
+                             bj * block_size:min((bj + 1) * block_size, w)]
+            if block.size > 0 and np.std(block) < 15:
+                uniform_pixels += block.size
+    uniform_ratio = uniform_pixels / (h * w)
+
     border = int(min(h, w) * 0.1)
     border_region = np.concatenate([
         img_gray[:border, :].flatten(),
@@ -98,11 +112,18 @@ def _analyze_image(pil_img: Image.Image) -> dict:
         img_gray[:, -border:].flatten(),
     ])
     border_white = np.sum(border_region > 235) / len(border_region)
-    effective_whitespace = whitespace_ratio * 0.6 + border_white * 0.4
+    # 均一領域の端部分もチェック
+    border_uniform = np.std(border_region) < 25
+
+    # 白ベースの余白 + 均一領域ベースの余白を統合
+    white_effective = whitespace_ratio * 0.6 + border_white * 0.4
+    uniform_effective = uniform_ratio * 0.7 + (0.3 if border_uniform else 0.0)
+    effective_whitespace = max(white_effective, uniform_effective)
 
     results["whitespace"] = {
         "ratio": round(whitespace_ratio * 100, 1),
         "border_ratio": round(border_white * 100, 1),
+        "uniform_ratio": round(uniform_ratio * 100, 1),
         "effective": round(effective_whitespace * 100, 1),
     }
 
