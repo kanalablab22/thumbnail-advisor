@@ -406,6 +406,38 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
         </div>
         """, unsafe_allow_html=True)
 
+    # ===== ジャンル別アドバイス（検索結果プレビューの上に表示） =====
+    if search_keyword:
+        genre_info = get_genre_advice(search_keyword)
+        st.markdown("---")
+        st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #e8f4f8 0%, #f0e6f6 100%);
+                    border-radius: 16px; padding: 20px; margin: 12px 0;">
+            <div style="font-size: 1.3rem; font-weight: 700; color: #2C3E50; margin-bottom: 4px;">
+                {genre_info['icon']} 「{genre_info['genre']}」ジャンルのサムネイル戦略
+            </div>
+            <div style="font-size: 0.85rem; color: #7f8c8d; margin-bottom: 16px;">
+                参考店舗: {genre_info['reference_shops']}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        cols = st.columns(2)
+        for i, tip in enumerate(genre_info["tips"]):
+            with cols[i % 2]:
+                st.markdown(f"""
+                <div style="background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px;
+                            border-left: 4px solid {'#667eea' if i % 2 == 0 else '#764ba2'};
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+                    <div style="font-weight: 700; color: #2C3E50; margin-bottom: 6px; font-size: 0.95rem;">
+                        💡 {tip['title']}
+                    </div>
+                    <div style="color: #555; font-size: 0.85rem; line-height: 1.6;">
+                        {tip['detail']}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
     # 楽天検索結果プレビュー
     if search_keyword:
         st.markdown("---")
@@ -460,38 +492,6 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
                     with tab_sp:
                         sp_html = build_mobile_html(search_keyword, items, pil_img, position=5)
                         components.html(sp_html, height=900, scrolling=True)
-
-    # ===== ジャンル別アドバイス =====
-    if search_keyword:
-        genre_info = get_genre_advice(search_keyword)
-        st.markdown("---")
-        st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #e8f4f8 0%, #f0e6f6 100%);
-                    border-radius: 16px; padding: 20px; margin: 12px 0;">
-            <div style="font-size: 1.3rem; font-weight: 700; color: #2C3E50; margin-bottom: 4px;">
-                {genre_info['icon']} 「{genre_info['genre']}」ジャンルのサムネイル戦略
-            </div>
-            <div style="font-size: 0.85rem; color: #7f8c8d; margin-bottom: 16px;">
-                参考店舗: {genre_info['reference_shops']}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        cols = st.columns(2)
-        for i, tip in enumerate(genre_info["tips"]):
-            with cols[i % 2]:
-                st.markdown(f"""
-                <div style="background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px;
-                            border-left: 4px solid {'#667eea' if i % 2 == 0 else '#764ba2'};
-                            box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-                    <div style="font-weight: 700; color: #2C3E50; margin-bottom: 6px; font-size: 0.95rem;">
-                        💡 {tip['title']}
-                    </div>
-                    <div style="color: #555; font-size: 0.85rem; line-height: 1.6;">
-                        {tip['detail']}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
 
     # 解析詳細（折りたたみ）
     with st.expander("🔬 解析データの詳細を見る"):
