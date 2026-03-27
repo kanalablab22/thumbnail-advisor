@@ -356,20 +356,20 @@ def _compute_scores(analysis: dict) -> dict:
     else:
         scores["whitespace"] = 2  # 余白なさすぎ
 
-    # 2. テキスト最適度（楽天基準: ゼロも多すぎもNG。8-15%が最適）
-    # edge-based推定なので実際のテキスト面積とは異なるが傾向は合う
+    # 2. テキスト最適度（楽天基準: ゼロも多すぎもNG）
+    # 周辺エリアベースの推定値なので、全体エッジより小さい数値が出る
     ta = analysis["text_amount"]["estimated_text_area"]
-    ed = analysis["text_amount"]["edge_density"]
-    if 20 <= ta <= 40:
+    has_text = analysis["text_amount"]["has_text_overlay"]
+    if has_text and 5 <= ta <= 18:
         scores["text_amount"] = 5  # 最適ゾーン（適度なテキスト訴求あり）
-    elif 15 <= ta <= 45:
+    elif has_text and 3 <= ta <= 25:
         scores["text_amount"] = 4
-    elif 10 <= ta <= 55:
+    elif has_text and 1 <= ta <= 35:
         scores["text_amount"] = 3
-    elif ta < 10:
+    elif not has_text or ta < 1:
         scores["text_amount"] = 2  # テキストがほぼない（楽天では訴求力不足）
     else:
-        scores["text_amount"] = 1  # テキスト過多
+        scores["text_amount"] = 1  # テキスト過多（35%超え）
 
     # 3. 背景の適切さ（楽天基準: 白もスタイリングも同等に評価）
     sb = analysis["background"]["simple_blocks"]
