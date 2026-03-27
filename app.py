@@ -244,6 +244,7 @@ REF_SCORES = {
     "whitespace": 5, "text_amount": 5, "background": 5,
     "color_tone": 5, "photo_quality": 5, "composition": 5, "color_variation": 4,
 }
+# 楽天基準の重み（image_checker.pyのCRITERIA_INFOと連動）
 
 
 def get_grade(score):
