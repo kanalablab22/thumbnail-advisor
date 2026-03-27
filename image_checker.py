@@ -209,16 +209,13 @@ def _analyze_image(pil_img: Image.Image) -> dict:
     has_text_on_peripheral = peripheral_edge_ratio > 0.08
     has_text_overlay = has_text_on_bg or has_text_on_peripheral
 
-    if has_text_on_bg and bg_mask.sum() > h * w * 0.3:
-        # 白/均一背景が広い場合: 背景上のエッジ＝テキストなので従来通り
-        effective_text_area = text_area_ratio
-    elif has_text_overlay:
-        # スタイリング背景の場合: 周辺エリアのエッジだけでテキスト面積を推定
-        # （商品テクスチャのエッジを除外する）
+    if has_text_overlay:
+        # テキストあり: 周辺エリアのエッジだけでテキスト面積を推定
+        # 画像全体のエッジだと商品テクスチャ（革・布・花等）が混入するため
         effective_text_area = peripheral_text_area
     else:
         # テキストなし
-        effective_text_area = bg_edge_ratio * 100  # ほぼ0になる
+        effective_text_area = min(bg_edge_ratio, peripheral_edge_ratio) * 0.5  # ほぼ0
 
     results["text_amount"] = {
         "edge_density": round(edge_density * 100, 1),
