@@ -198,24 +198,21 @@ def _analyze_image(pil_img: Image.Image) -> dict:
     peripheral_edges = edges & peripheral_mask.astype(np.uint8)
     peripheral_edge_ratio = np.sum(peripheral_edges > 0) / max(np.sum(peripheral_mask), 1)
 
-    # 周辺エリアの膨張エッジ面積（テキスト面積の推定に使う）
+    # 周辺エリア内でのテキスト面積密度（周辺エリア面積に対する比率）
     peripheral_dilated = dilated & peripheral_mask.astype(np.uint8)
-    peripheral_text_area = np.sum(peripheral_dilated > 0) / (h * w)
+    peripheral_text_density = np.sum(peripheral_dilated > 0) / max(np.sum(peripheral_mask), 1)
 
     # テキスト有無の総合判定（どちらかで検出できればOK）
-    # bg_edge_ratio: 白/均一背景上のエッジ → 白抜き画像のテキスト検出
-    # peripheral_edge_ratio: 周辺エリアのエッジ → スタイリング背景上のテキスト検出
+    # 閾値を低めに設定: テキストがある画像を見逃さない
     has_text_on_bg = bg_edge_ratio > 0.02
-    has_text_on_peripheral = peripheral_edge_ratio > 0.08
+    has_text_on_peripheral = peripheral_edge_ratio > 0.04  # 周辺4%以上のエッジ
     has_text_overlay = has_text_on_bg or has_text_on_peripheral
 
+    # テキスト量スコア用の指標（周辺エリア密度 × 100 でパーセント表記）
     if has_text_overlay:
-        # テキストあり: 周辺エリアのエッジだけでテキスト面積を推定
-        # 画像全体のエッジだと商品テクスチャ（革・布・花等）が混入するため
-        effective_text_area = peripheral_text_area
+        effective_text_area = peripheral_text_density
     else:
-        # テキストなし
-        effective_text_area = min(bg_edge_ratio, peripheral_edge_ratio) * 0.5  # ほぼ0
+        effective_text_area = 0.0
 
     results["text_amount"] = {
         "edge_density": round(edge_density * 100, 1),
@@ -360,16 +357,16 @@ def _compute_scores(analysis: dict) -> dict:
     # 周辺エリアベースの推定値なので、全体エッジより小さい数値が出る
     ta = analysis["text_amount"]["estimated_text_area"]
     has_text = analysis["text_amount"]["has_text_overlay"]
-    if has_text and 5 <= ta <= 18:
+    if has_text and 15 <= ta <= 50:
         scores["text_amount"] = 5  # 最適ゾーン（適度なテキスト訴求あり）
-    elif has_text and 3 <= ta <= 25:
+    elif has_text and 8 <= ta <= 60:
         scores["text_amount"] = 4
-    elif has_text and 1 <= ta <= 35:
-        scores["text_amount"] = 3
-    elif not has_text or ta < 1:
+    elif has_text:
+        scores["text_amount"] = 3  # テキストはあるが量の調整が必要
+    elif not has_text:
         scores["text_amount"] = 2  # テキストがほぼない（楽天では訴求力不足）
     else:
-        scores["text_amount"] = 1  # テキスト過多（35%超え）
+        scores["text_amount"] = 1  # テキスト過多
 
     # 3. 背景の適切さ（楽天基準: 白もスタイリングも同等に評価）
     sb = analysis["background"]["simple_blocks"]
