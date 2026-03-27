@@ -276,24 +276,41 @@ def _analyze_image(pil_img: Image.Image) -> dict:
     }
 
     # ----- 7. カラバリ表示の検出 -----
+    # 下部20%の彩度チェック
     bottom_region_sat = saturation[int(h * 0.8):, :]
     if bottom_region_sat.size > 0:
         bottom_has_colors = np.sum(bottom_region_sat > 60) / bottom_region_sat.size
     else:
         bottom_has_colors = 0
 
+    # 下部15%で色の切り替わり（カラードット等）を検出
     bottom_gray = img_gray[int(h * 0.85):, :]
+    bottom_hue = hue[int(h * 0.85):, :]
+    bottom_sat_region = saturation[int(h * 0.85):, :]
+    has_swatches = False
+    n_distinct_hues = 0
+
     if bottom_gray.size > 0:
         col_means = np.mean(bottom_gray, axis=0)
         col_diff = np.abs(np.diff(col_means.astype(float)))
         n_transitions = np.sum(col_diff > 30)
-        has_swatches = n_transitions > 6
-    else:
-        has_swatches = False
+
+        # カラバリ判定: 色の切り替わりだけでなく、複数の異なる色相が必要
+        # 商品が1色だけ下部にはみ出してるケースを除外
+        sat_mask = bottom_sat_region > 50
+        if np.sum(sat_mask) > 100:
+            hues_in_bottom = bottom_hue[sat_mask]
+            # 色相を15度刻みでグルーピングして何色あるか数える
+            hue_bins = np.round(hues_in_bottom / 15).astype(int)
+            n_distinct_hues = len(set(hue_bins))
+
+        # カラバリあり = 色の切り替わりが多い AND 3色以上の異なる色相がある
+        has_swatches = n_transitions > 6 and n_distinct_hues >= 3
 
     results["color_variation"] = {
         "bottom_color_ratio": round(bottom_has_colors * 100, 1),
         "has_swatches": has_swatches,
+        "n_distinct_hues": n_distinct_hues,
     }
 
     return results
