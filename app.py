@@ -485,12 +485,16 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
                         st.error(f"楽天API取得エラー: {e}")
 
                 if items:
+                    import random
+                    pc_pos = random.randint(3, 6)
+                    sp_pos = random.randint(3, 6)
+
                     with tab_pc:
-                        pc_html = build_pc_html(search_keyword, items, pil_img, position=8)
+                        pc_html = build_pc_html(search_keyword, items, pil_img, position=pc_pos)
                         components.html(pc_html, height=800, scrolling=True)
 
                     with tab_sp:
-                        sp_html = build_mobile_html(search_keyword, items, pil_img, position=5)
+                        sp_html = build_mobile_html(search_keyword, items, pil_img, position=sp_pos)
                         components.html(sp_html, height=900, scrolling=True)
 
     # 解析詳細（折りたたみ）

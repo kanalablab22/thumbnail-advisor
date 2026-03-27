@@ -182,13 +182,26 @@ def _analyze_image(pil_img: Image.Image) -> dict:
             if block.size > 0 and np.std(block) < 15:
                 bg_mask[block_slice] = True
 
+    # 周辺エリアマスク（テキストが配置されやすい上部・下部・左右端）
+    # 楽天サムネではスタイリング背景の上にテキストを重ねることが多い
+    peripheral_mask = np.zeros((h, w), dtype=bool)
+    peripheral_mask[:int(h * 0.20), :] = True   # 上部20%
+    peripheral_mask[int(h * 0.75):, :] = True    # 下部25%
+    peripheral_mask[:, :int(w * 0.10)] = True    # 左端10%
+    peripheral_mask[:, int(w * 0.90):] = True    # 右端10%
+
     # 背景エリアにあるエッジ＝テキストの可能性が高い
     bg_edges = edges & bg_mask.astype(np.uint8)
     bg_edge_ratio = np.sum(bg_edges > 0) / max(np.sum(bg_mask), 1)
 
-    # テキスト有無の総合判定
-    # bg_edge_ratio が低い = 背景にエッジなし = テキストなし（商品テクスチャだけ）
-    has_text_overlay = bg_edge_ratio > 0.02  # 背景の2%以上にエッジがあればテキストあり
+    # 周辺エリアにあるエッジ＝テキストの可能性が高い（背景が白でなくても検出）
+    peripheral_edges = edges & peripheral_mask.astype(np.uint8)
+    peripheral_edge_ratio = np.sum(peripheral_edges > 0) / max(np.sum(peripheral_mask), 1)
+
+    # テキスト有無の総合判定（どちらかで検出できればOK）
+    # bg_edge_ratio: 白/均一背景上のエッジ → 白抜き画像のテキスト検出
+    # peripheral_edge_ratio: 周辺エリアのエッジ → スタイリング背景上のテキスト検出
+    has_text_overlay = bg_edge_ratio > 0.02 or peripheral_edge_ratio > 0.08
     if has_text_overlay:
         # テキストあり: 従来のtext_area_ratioをそのまま使う
         effective_text_area = text_area_ratio
@@ -201,6 +214,7 @@ def _analyze_image(pil_img: Image.Image) -> dict:
         "high_freq": round(high_freq, 1),
         "estimated_text_area": round(effective_text_area * 100, 1),
         "bg_edge_ratio": round(bg_edge_ratio * 100, 2),
+        "peripheral_edge_ratio": round(peripheral_edge_ratio * 100, 2),
         "has_text_overlay": has_text_overlay,
     }
 
