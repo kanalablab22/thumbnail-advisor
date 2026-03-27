@@ -436,15 +436,17 @@ def _compute_scores(analysis: dict) -> dict:
     else:
         scores["composition"] = 2
 
-    # 7. カラバリ表示
+    # 7. カラバリ表示（実際に複数色のスウォッチ/カラードットがあるかで判定）
     has_sw = analysis["color_variation"]["has_swatches"]
-    bottom_color = analysis["color_variation"]["bottom_color_ratio"]
-    if has_sw or bottom_color > 15:
-        scores["color_variation"] = 4
-    elif bottom_color > 5:
-        scores["color_variation"] = 3
+    n_hues = analysis["color_variation"]["n_distinct_hues"]
+    if has_sw and n_hues >= 4:
+        scores["color_variation"] = 5  # 豊富なカラバリ表示
+    elif has_sw:
+        scores["color_variation"] = 4  # カラバリ表示あり
+    elif n_hues >= 3:
+        scores["color_variation"] = 3  # カラバリっぽい表示あり
     else:
-        scores["color_variation"] = 2
+        scores["color_variation"] = 2  # カラバリ表示なし
 
     return scores
 
