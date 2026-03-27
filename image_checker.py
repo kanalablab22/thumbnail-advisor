@@ -198,15 +198,26 @@ def _analyze_image(pil_img: Image.Image) -> dict:
     peripheral_edges = edges & peripheral_mask.astype(np.uint8)
     peripheral_edge_ratio = np.sum(peripheral_edges > 0) / max(np.sum(peripheral_mask), 1)
 
+    # 周辺エリアの膨張エッジ面積（テキスト面積の推定に使う）
+    peripheral_dilated = dilated & peripheral_mask.astype(np.uint8)
+    peripheral_text_area = np.sum(peripheral_dilated > 0) / (h * w)
+
     # テキスト有無の総合判定（どちらかで検出できればOK）
     # bg_edge_ratio: 白/均一背景上のエッジ → 白抜き画像のテキスト検出
     # peripheral_edge_ratio: 周辺エリアのエッジ → スタイリング背景上のテキスト検出
-    has_text_overlay = bg_edge_ratio > 0.02 or peripheral_edge_ratio > 0.08
-    if has_text_overlay:
-        # テキストあり: 従来のtext_area_ratioをそのまま使う
+    has_text_on_bg = bg_edge_ratio > 0.02
+    has_text_on_peripheral = peripheral_edge_ratio > 0.08
+    has_text_overlay = has_text_on_bg or has_text_on_peripheral
+
+    if has_text_on_bg and bg_mask.sum() > h * w * 0.3:
+        # 白/均一背景が広い場合: 背景上のエッジ＝テキストなので従来通り
         effective_text_area = text_area_ratio
+    elif has_text_overlay:
+        # スタイリング背景の場合: 周辺エリアのエッジだけでテキスト面積を推定
+        # （商品テクスチャのエッジを除外する）
+        effective_text_area = peripheral_text_area
     else:
-        # テキストなし: 商品テクスチャのエッジは除外して0に近づける
+        # テキストなし
         effective_text_area = bg_edge_ratio * 100  # ほぼ0になる
 
     results["text_amount"] = {
