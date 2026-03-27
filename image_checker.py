@@ -127,7 +127,7 @@ def _analyze_image(pil_img: Image.Image) -> dict:
         "effective": round(effective_whitespace * 100, 1),
     }
 
-    # ----- 2. テキスト量推定（エッジ密度で近似）-----
+    # ----- 2. テキスト量推定（背景エリアのエッジで判定）-----
     # 簡易Cannyエッジ（ソーベルフィルタで近似）
     gray_f = img_gray.astype(float)
     # 水平方向ソーベル
@@ -166,10 +166,42 @@ def _analyze_image(pil_img: Image.Image) -> dict:
         dilated = new_dilated
     text_area_ratio = np.sum(dilated > 0) / (h * w)
 
+    # 背景エリアのエッジ密度でテキスト有無を判定
+    # 商品テクスチャ（革のシボ等）とテキストを区別するため、
+    # 背景（均一な領域）上のエッジだけをカウントする
+    # 背景マスク: 白ピクセル or 均一領域（商品以外のエリア）
+    bg_mask = whitespace_mask.copy()  # 白ピクセル(>235)
+    # 均一ブロックも背景に追加
+    for bi in range(8):
+        for bj in range(8):
+            block_slice = (
+                slice(bi * block_size, min((bi + 1) * block_size, h)),
+                slice(bj * block_size, min((bj + 1) * block_size, w)),
+            )
+            block = img_gray[block_slice]
+            if block.size > 0 and np.std(block) < 15:
+                bg_mask[block_slice] = True
+
+    # 背景エリアにあるエッジ＝テキストの可能性が高い
+    bg_edges = edges & bg_mask.astype(np.uint8)
+    bg_edge_ratio = np.sum(bg_edges > 0) / max(np.sum(bg_mask), 1)
+
+    # テキスト有無の総合判定
+    # bg_edge_ratio が低い = 背景にエッジなし = テキストなし（商品テクスチャだけ）
+    has_text_overlay = bg_edge_ratio > 0.02  # 背景の2%以上にエッジがあればテキストあり
+    if has_text_overlay:
+        # テキストあり: 従来のtext_area_ratioをそのまま使う
+        effective_text_area = text_area_ratio
+    else:
+        # テキストなし: 商品テクスチャのエッジは除外して0に近づける
+        effective_text_area = bg_edge_ratio * 100  # ほぼ0になる
+
     results["text_amount"] = {
         "edge_density": round(edge_density * 100, 1),
         "high_freq": round(high_freq, 1),
-        "estimated_text_area": round(text_area_ratio * 100, 1),
+        "estimated_text_area": round(effective_text_area * 100, 1),
+        "bg_edge_ratio": round(bg_edge_ratio * 100, 2),
+        "has_text_overlay": has_text_overlay,
     }
 
     # ----- 3. 背景のシンプルさ -----
