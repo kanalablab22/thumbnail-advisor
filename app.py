@@ -479,7 +479,7 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
             else:
                 with st.spinner(f"「{search_keyword}」を検索中..."):
                     try:
-                        items = search_rakuten_items(search_keyword, rakuten_app_id, hits=12, access_key=rakuten_access_key)
+                        items = search_rakuten_items(search_keyword, rakuten_app_id, hits=14, access_key=rakuten_access_key)
                     except Exception as e:
                         items = []
                         st.error(f"楽天API取得エラー: {e}")
