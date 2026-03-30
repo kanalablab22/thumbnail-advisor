@@ -477,8 +477,11 @@ def _compute_scores(analysis: dict, genre: str = None) -> dict:
     has_border = analysis["background"]["has_border"]
     avg_std = analysis["background"]["avg_std"]
     ws_effective = analysis["whitespace"]["effective"]
+    is_plain_cutout = not has_text and ws_effective > 50  # テキストなし＋余白多い＝ただの白抜き
     if has_border:
         scores["background"] = 1  # 枠線はガイドライン違反
+    elif is_plain_cutout:
+        scores["background"] = 3  # 白抜きは最低限OK、でも楽天では物足りない
     elif sb >= 8 and avg_std < 50:
         scores["background"] = 5  # きれいな白背景 or 統一感あるスタイリング背景
     elif ws_effective >= 20 and avg_std < 65:
