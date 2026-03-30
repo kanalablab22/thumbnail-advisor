@@ -213,11 +213,11 @@ def _analyze_image(pil_img: Image.Image) -> dict:
     peripheral_high_sat_ratio = np.sum(peripheral_sat_01 > 0.4) / max(len(peripheral_sat_01), 1)
 
     # テキスト有無の総合判定（4条件のOR）
-    has_text_on_bg = peripheral_bg_edge_ratio > 0.04       # 周辺の背景エッジ4%以上
-    has_text_on_peripheral = peripheral_edge_ratio > 0.04  # 周辺エリア全体のエッジ4%以上
-    has_text_by_density = edge_density > 0.035 and text_area_ratio > 0.10  # 全体エッジ密度+テキストエリア
-    has_text_by_color = peripheral_high_sat_ratio > 0.08 and edge_density > 0.02  # 高彩度バッジ・バナー
-    has_text_overlay = has_text_on_bg or has_text_on_peripheral or has_text_by_density or has_text_by_color
+    has_text_on_bg = peripheral_bg_edge_ratio > 0.04       # 周辺の白背景上にエッジ
+    has_text_on_peripheral = peripheral_edge_ratio > 0.06  # 周辺エッジが非常に多い
+    has_text_by_color = peripheral_high_sat_ratio > 0.08 and edge_density > 0.02  # カラフルなバッジ・バナー
+    has_text_edge_color = peripheral_edge_ratio > 0.04 and peripheral_high_sat_ratio > 0.02  # エッジ+彩度の複合
+    has_text_overlay = has_text_on_bg or has_text_on_peripheral or has_text_by_color or has_text_edge_color
 
     # テキスト量スコア用の指標（周辺エリア密度 × 100 でパーセント表記）
     if has_text_overlay:
