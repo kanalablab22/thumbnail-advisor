@@ -265,15 +265,18 @@ st.markdown("""
 <div class="app-header">
     <div class="app-title">🎨 楽天サムネイル アドバイザー</div>
     <div class="app-desc">画像をアップロードするだけ → 自動解析 → スコア＆改善アドバイス</div>
-    <div style="margin-top:12px; font-size:0.85rem; color:#666; line-height:1.8;">
-        ① 検索キーワードを入力（例：「レディース 財布 本革」）→ ジャンル別アドバイスが表示されます<br>
-        ② サムネイル画像をアップロード → 7項目のスコアと改善ポイントが表示されます<br>
-        ③ 検索結果プレビューで、実際の楽天検索に並んだときの見え方を確認できます
+    <div style="margin-top:16px; background:#EFF6FF; border:1px solid #BFDBFE; border-radius:12px; padding:20px 24px; text-align:left; max-width:680px; margin-left:auto; margin-right:auto;">
+        <div style="font-weight:700; color:#1E40AF; font-size:0.95rem; margin-bottom:12px;">💡 使い方ガイド</div>
+        <div style="font-size:0.88rem; color:#1E3A5F; line-height:2.0;">
+            1. 左に画像をアップ、右にキーワードを入力（順番は自由！）<br>
+            2. 自動で白背景・明るさ・構図をチェック → 100点満点でスコア表示<br>
+            3. 検索結果プレビューで競合商品の中での見え方も確認できます
+        </div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-# アップロード＆キーワード入力
+# アップロード＆キーワード＆ジャンル入力
 col_up, col_kw = st.columns([2, 1])
 with col_up:
     uploaded_files = st.file_uploader(
@@ -286,6 +289,53 @@ with col_kw:
         "🔍 検索キーワード（検索結果プレビュー用）",
         placeholder="例：財布 レディース 本革",
     )
+    GENRE_OPTIONS = [
+        "自動判定",
+        "バッグ・財布・小物（レディース）",
+        "バッグ・財布・小物（メンズ）",
+        "ファッション（レディース）",
+        "ファッション（メンズ）",
+        "食品・グルメ",
+        "インテリア・家具",
+        "コスメ・美容",
+        "家電・日用品",
+        "ペット用品",
+        "スポーツ・ゴルフ",
+        "キッズ・ベビー",
+    ]
+    selected_genre = st.selectbox(
+        "🏷️ ジャンル（スコア基準が変わります）",
+        GENRE_OPTIONS,
+        index=0,
+    )
+
+# ジャンル判定（プルダウン優先、自動判定はキーワードから）
+if selected_genre == "自動判定":
+    from genre_advisor import detect_genre
+    detected = detect_genre(search_keyword) if search_keyword else None
+    # detect_genreの結果をプルダウンのジャンル名にマッピング
+    _genre_map = {
+        "バッグ・財布": "バッグ・財布・小物（レディース）",  # デフォルトはレディース
+        "ファッション": "ファッション（レディース）",
+        "食品・グルメ": "食品・グルメ",
+        "インテリア・家具": "インテリア・家具",
+        "コスメ・美容": "コスメ・美容",
+        "家電・日用品": "家電・日用品",
+        "ペット用品": "ペット用品",
+        "スポーツ・ゴルフ": "スポーツ・ゴルフ",
+        "キッズ・ベビー": "キッズ・ベビー",
+    }
+    # キーワードにメンズが含まれていればメンズに切り替え
+    if detected and search_keyword:
+        kw_lower = search_keyword.lower()
+        if any(w in kw_lower for w in ["メンズ", "mens", "男性", "紳士"]):
+            if detected == "バッグ・財布":
+                _genre_map["バッグ・財布"] = "バッグ・財布・小物（メンズ）"
+            elif detected == "ファッション":
+                _genre_map["ファッション"] = "ファッション（メンズ）"
+    active_genre = _genre_map.get(detected) if detected else None
+else:
+    active_genre = selected_genre
 
 if not uploaded_files:
     st.info("👆 上のエリアにサムネイル画像をドロップしてください（複数OK）")
@@ -304,11 +354,13 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
         st.image(pil_img, caption=uploaded_file.name, use_container_width=True)
         w_px, h_px = pil_img.size
         st.caption(f"📐 {w_px} x {h_px} px")
+        if active_genre:
+            st.caption(f"🏷️ {active_genre}")
 
     with col_result:
         with st.spinner("解析中..."):
             try:
-                report = check_image(pil_img, uploaded_file.name)
+                report = check_image(pil_img, uploaded_file.name, genre=active_genre)
                 total = report.score
                 grade, grade_msg = get_grade(total)
             except Exception as e:

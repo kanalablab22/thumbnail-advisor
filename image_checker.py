@@ -335,38 +335,131 @@ def _analyze_image(pil_img: Image.Image) -> dict:
     return results
 
 
-def _compute_scores(analysis: dict) -> dict:
-    """解析結果からスコアを計算（各項目5点満点）— 楽天市場基準"""
+# ===== ジャンル別スコアリング設定 =====
+# 各ジャンルで「重み」と「閾値の調整」を定義
+# 未定義の項目はデフォルト（汎用）基準を使う
+GENRE_SCORING = {
+    "バッグ・財布・小物（レディース）": {
+        # ラシエム・スタイルオンバッグ系：余白多め、くすみカラー、テキスト控えめ
+        "weights": {"whitespace": 1.0, "text_amount": 1.0, "color_tone": 1.0, "composition": 1.1},
+        "whitespace": {"ideal": [15, 35], "ok": [10, 45]},
+        "text_amount": {"ideal": [10, 40], "ok": [5, 55]},
+        "color_tone": {"max_saturation": 70, "max_high_sat": 10},  # くすみカラー重視
+    },
+    "バッグ・財布・小物（メンズ）": {
+        # GRAV・DEVICE系：ダーク系OK、テキスト訴求あり、高級感
+        "weights": {"whitespace": 0.9, "text_amount": 1.2, "color_tone": 0.8},
+        "whitespace": {"ideal": [12, 35], "ok": [8, 45]},
+        "text_amount": {"ideal": [12, 50], "ok": [5, 60]},
+        "color_tone": {"max_saturation": 80, "max_high_sat": 15},  # ダーク系許容
+        "photo_quality": {"brightness_range": [80, 210]},  # やや暗めもOK
+    },
+    "ファッション（レディース）": {
+        # Dark Angel・HUG.U系：モデル着用、パステル・くすみ、余白あり
+        "weights": {"whitespace": 1.0, "composition": 1.2, "color_tone": 1.0},
+        "whitespace": {"ideal": [15, 40], "ok": [10, 50]},
+        "text_amount": {"ideal": [8, 35], "ok": [3, 50]},
+        "color_tone": {"max_saturation": 70, "max_high_sat": 12},
+    },
+    "ファッション（メンズ）": {
+        # SPU・MinoriTY系：モデル着用、モノトーン、テキスト少なめ
+        "weights": {"whitespace": 0.9, "composition": 1.2, "color_tone": 0.8},
+        "whitespace": {"ideal": [12, 35], "ok": [8, 45]},
+        "text_amount": {"ideal": [8, 40], "ok": [3, 55]},
+        "color_tone": {"max_saturation": 80, "max_high_sat": 18},  # モノトーン許容
+        "photo_quality": {"brightness_range": [80, 210]},
+    },
+    "食品・グルメ": {
+        # 甲羅組・LeTAO系：テキスト多めOK、暖色・高彩度OK、余白少なめOK
+        "weights": {"text_amount": 1.3, "whitespace": 0.6, "color_tone": 0.5, "photo_quality": 1.2},
+        "whitespace": {"ideal": [8, 30], "ok": [5, 40]},
+        "text_amount": {"ideal": [15, 60], "ok": [8, 70]},
+        "color_tone": {"max_saturation": 130, "max_high_sat": 35},  # 暖色・高彩度OK
+        "photo_quality": {"brightness_range": [90, 220]},  # 明るめ推奨
+    },
+    "インテリア・家具": {
+        # LOWYA・Re:CENO系：ナチュラル背景OK、余白多め、テキスト控えめ
+        "weights": {"whitespace": 1.0, "background": 1.1, "composition": 1.1},
+        "whitespace": {"ideal": [15, 40], "ok": [10, 50]},
+        "text_amount": {"ideal": [5, 30], "ok": [3, 45]},
+        "color_tone": {"max_saturation": 70, "max_high_sat": 12},
+    },
+    "コスメ・美容": {
+        # SALONIA・ETVOS系：ミニマル、パステル・白背景、余白多め
+        "weights": {"whitespace": 1.1, "background": 1.1, "color_tone": 1.0},
+        "whitespace": {"ideal": [18, 40], "ok": [12, 50]},
+        "text_amount": {"ideal": [8, 35], "ok": [3, 50]},
+        "color_tone": {"max_saturation": 60, "max_high_sat": 8},  # パステル・低彩度重視
+    },
+    "家電・日用品": {
+        # アイリスオーヤマ・ReFa系：スペック訴求テキスト多めOK、高コントラストOK
+        "weights": {"text_amount": 1.3, "whitespace": 0.7, "photo_quality": 1.1},
+        "whitespace": {"ideal": [10, 30], "ok": [5, 40]},
+        "text_amount": {"ideal": [15, 55], "ok": [8, 65]},
+        "color_tone": {"max_saturation": 100, "max_high_sat": 25},
+    },
+    "ペット用品": {
+        # PEPPY・charm系：かわいい系OK、暖色OK、テキストやや多めOK
+        "weights": {"text_amount": 1.1, "color_tone": 0.7, "photo_quality": 1.0},
+        "whitespace": {"ideal": [10, 35], "ok": [5, 45]},
+        "text_amount": {"ideal": [12, 50], "ok": [5, 60]},
+        "color_tone": {"max_saturation": 110, "max_high_sat": 25},  # カラフルOK
+    },
+    "スポーツ・ゴルフ": {
+        # EENOUR・TecTecTec系：スペック数値訴求、高コントラスト、テキスト多めOK
+        "weights": {"text_amount": 1.3, "whitespace": 0.6, "photo_quality": 1.2},
+        "whitespace": {"ideal": [8, 30], "ok": [5, 40]},
+        "text_amount": {"ideal": [15, 60], "ok": [8, 70]},
+        "color_tone": {"max_saturation": 110, "max_high_sat": 25},
+        "photo_quality": {"brightness_range": [90, 220]},
+    },
+    "キッズ・ベビー": {
+        # BabyGoose系：パステルカラー、かわいい系、テキストやや多めOK
+        "weights": {"text_amount": 1.0, "color_tone": 0.8, "whitespace": 0.8},
+        "whitespace": {"ideal": [10, 35], "ok": [5, 45]},
+        "text_amount": {"ideal": [10, 45], "ok": [5, 55]},
+        "color_tone": {"max_saturation": 100, "max_high_sat": 20},  # パステルOK
+    },
+}
+
+
+def _compute_scores(analysis: dict, genre: str = None) -> dict:
+    """解析結果からスコアを計算（各項目5点満点）— 楽天市場基準（ジャンル対応）"""
     scores = {}
+    g = GENRE_SCORING.get(genre, {}) if genre else {}
 
-    # 1. 余白バランス（楽天基準: 多すぎもマイナス。商品50-70%が最適）
+    # 1. 余白バランス（ジャンル対応）
     ws = analysis["whitespace"]["effective"]
-    ur = analysis["whitespace"].get("uniform_ratio", 0)
-    if 15 <= ws <= 35:
-        scores["whitespace"] = 5  # 適度な余白（商品＋テキストのバランスが取れる）
-    elif 10 <= ws <= 45:
+    ws_cfg = g.get("whitespace", {})
+    ws_ideal = ws_cfg.get("ideal", [15, 35])
+    ws_ok = ws_cfg.get("ok", [10, 45])
+    if ws_ideal[0] <= ws <= ws_ideal[1]:
+        scores["whitespace"] = 5
+    elif ws_ok[0] <= ws <= ws_ok[1]:
         scores["whitespace"] = 4
-    elif 8 <= ws <= 55:
+    elif ws_ok[0] - 2 <= ws <= ws_ok[1] + 10:
         scores["whitespace"] = 3
-    elif ws > 55:
-        scores["whitespace"] = 2  # 余白が多すぎ（Amazon風白抜き＝楽天では訴求不足）
+    elif ws > ws_ok[1] + 10:
+        scores["whitespace"] = 2
     else:
-        scores["whitespace"] = 2  # 余白なさすぎ
+        scores["whitespace"] = 2
 
-    # 2. テキスト最適度（楽天基準: ゼロも多すぎもNG）
-    # 周辺エリアベースの推定値なので、全体エッジより小さい数値が出る
+    # 2. テキスト最適度（ジャンル対応）
     ta = analysis["text_amount"]["estimated_text_area"]
     has_text = analysis["text_amount"]["has_text_overlay"]
-    if has_text and 15 <= ta <= 50:
-        scores["text_amount"] = 5  # 最適ゾーン（適度なテキスト訴求あり）
-    elif has_text and 8 <= ta <= 60:
+    ta_cfg = g.get("text_amount", {})
+    ta_ideal = ta_cfg.get("ideal", [15, 50])
+    ta_ok = ta_cfg.get("ok", [8, 60])
+    if has_text and ta_ideal[0] <= ta <= ta_ideal[1]:
+        scores["text_amount"] = 5
+    elif has_text and ta_ok[0] <= ta <= ta_ok[1]:
         scores["text_amount"] = 4
     elif has_text:
-        scores["text_amount"] = 3  # テキストはあるが量の調整が必要
+        scores["text_amount"] = 3
     elif not has_text:
-        scores["text_amount"] = 2  # テキストがほぼない（楽天では訴求力不足）
+        scores["text_amount"] = 2
     else:
-        scores["text_amount"] = 1  # テキスト過多
+        scores["text_amount"] = 1
 
     # 3. 背景の適切さ（楽天基準: 白もスタイリングも同等に評価）
     sb = analysis["background"]["simple_blocks"]
@@ -385,20 +478,23 @@ def _compute_scores(analysis: dict) -> dict:
     else:
         scores["background"] = 2  # 背景がごちゃごちゃ
 
-    # 4. 色使い・トーン
+    # 4. 色使い・トーン（ジャンル対応）
     avg_sat = analysis["color_tone"]["avg_saturation"]
     high_sat = analysis["color_tone"]["high_sat_ratio"]
     n_colors = analysis["color_tone"]["n_colors"]
-    if avg_sat <= 60 and high_sat <= 8 and n_colors <= 6:
-        scores["color_tone"] = 5  # 2-3色で統一された上品な色使い
-    elif avg_sat <= 80 and high_sat <= 15:
+    ct_cfg = g.get("color_tone", {})
+    ct_max_sat = ct_cfg.get("max_saturation", 60)
+    ct_max_hi = ct_cfg.get("max_high_sat", 8)
+    if avg_sat <= ct_max_sat and high_sat <= ct_max_hi and n_colors <= 6:
+        scores["color_tone"] = 5
+    elif avg_sat <= ct_max_sat + 20 and high_sat <= ct_max_hi + 7:
         scores["color_tone"] = 4
-    elif avg_sat <= 100 and high_sat <= 25:
+    elif avg_sat <= ct_max_sat + 40 and high_sat <= ct_max_hi + 17:
         scores["color_tone"] = 3
-    elif avg_sat <= 120:
+    elif avg_sat <= ct_max_sat + 60:
         scores["color_tone"] = 2
     else:
-        scores["color_tone"] = 1  # 蛍光色・原色多用
+        scores["color_tone"] = 1
 
     # 5. 写真品質（コントラスト + シャープネス + 明るさ）
     contrast = analysis["photo_quality"]["contrast"]
@@ -417,10 +513,13 @@ def _compute_scores(analysis: dict) -> dict:
         quality_score += 1.5
     elif sharpness >= 50:
         quality_score += 1
-    # 明るさ（暗すぎ・明るすぎをチェック）
-    if 100 <= brightness <= 200:
+    # 明るさ（ジャンル対応）
+    pq_cfg = g.get("photo_quality", {})
+    br_range = pq_cfg.get("brightness_range", [100, 200])
+    br_range_ok = [br_range[0] - 20, br_range[1] + 20]
+    if br_range[0] <= brightness <= br_range[1]:
         quality_score += 1
-    elif 80 <= brightness <= 220:
+    elif br_range_ok[0] <= brightness <= br_range_ok[1]:
         quality_score += 0.5
     scores["photo_quality"] = min(5, max(1, round(quality_score)))
 
@@ -545,13 +644,16 @@ CRITERIA_INFO = {
 }
 
 
-def _calc_total(scores: dict) -> int:
-    """加重平均で100点満点のスコアを算出"""
+def _calc_total(scores: dict, genre: str = None) -> int:
+    """加重平均で100点満点のスコアを算出（ジャンル別重み対応）"""
+    g = GENRE_SCORING.get(genre, {}) if genre else {}
+    genre_weights = g.get("weights", {})
     total = 0
     max_total = 0
     for cid, info in CRITERIA_INFO.items():
-        total += scores.get(cid, 0) * info["weight"]
-        max_total += 5 * info["weight"]
+        w = genre_weights.get(cid, info["weight"])
+        total += scores.get(cid, 0) * w
+        max_total += 5 * w
     return round(total / max_total * 100) if max_total > 0 else 0
 
 
@@ -569,11 +671,11 @@ def _get_grade(score: int) -> tuple:
         return "D", "大幅な改善チャンス！まず余白とテキスト量から"
 
 
-def check_image(image: Image.Image, filename: str = "image.jpg") -> "ImageCheckReport":
-    """画像を解析して ImageCheckReport を返す"""
+def check_image(image: Image.Image, filename: str = "image.jpg", genre: str = None) -> "ImageCheckReport":
+    """画像を解析して ImageCheckReport を返す（ジャンル別スコアリング対応）"""
     analysis = _analyze_image(image)
-    scores = _compute_scores(analysis)
-    total_score = _calc_total(scores)
+    scores = _compute_scores(analysis, genre)
+    total_score = _calc_total(scores, genre)
     grade, grade_msg = _get_grade(total_score)
 
     # チェック結果をリスト化
