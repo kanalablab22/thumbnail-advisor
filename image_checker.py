@@ -208,13 +208,9 @@ def _analyze_image(pil_img: Image.Image) -> dict:
     peripheral_bg_edge_ratio = np.sum(peripheral_bg_edges > 0) / max(np.sum(bg_mask & peripheral_mask), 1)
 
     # 周辺エリアの高彩度ピクセル検出（カラフルなバッジ・バナー用）
-    r_f, g_f, b_f = img_rgb[:, :, 0].astype(float), img_rgb[:, :, 1].astype(float), img_rgb[:, :, 2].astype(float)
-    c_max = np.maximum(np.maximum(r_f, g_f), b_f)
-    c_min = np.minimum(np.minimum(r_f, g_f), b_f)
-    with np.errstate(invalid="ignore"):
-        saturation = np.where(c_max > 0, (c_max - c_min) / c_max, 0)
-    peripheral_sat = saturation[peripheral_mask]
-    peripheral_high_sat_ratio = np.sum(peripheral_sat > 0.4) / max(len(peripheral_sat), 1)
+    # ※ saturation変数（0-255スケール）を上書きしないようローカル変数を使う
+    peripheral_sat_01 = saturation[peripheral_mask] / 255.0  # 0-1スケールに変換
+    peripheral_high_sat_ratio = np.sum(peripheral_sat_01 > 0.4) / max(len(peripheral_sat_01), 1)
 
     # テキスト有無の総合判定（4条件のOR）
     has_text_on_bg = peripheral_bg_edge_ratio > 0.04       # 周辺の背景エッジ4%以上
