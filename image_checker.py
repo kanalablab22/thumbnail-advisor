@@ -305,7 +305,7 @@ def _analyze_image(pil_img: Image.Image) -> dict:
         "center_focus": round(center_focus, 2),
     }
 
-    # ----- 7. カラバリ表示の検出 -----
+    # ----- 7. カラバリ表示の検出（下部・左端・右端を検索）-----
     # 下部20%の彩度チェック
     bottom_region_sat = saturation[int(h * 0.8):, :]
     if bottom_region_sat.size > 0:
@@ -313,35 +313,48 @@ def _analyze_image(pil_img: Image.Image) -> dict:
     else:
         bottom_has_colors = 0
 
-    # 下部15%で色の切り替わり（カラードット等）を検出
-    bottom_gray = img_gray[int(h * 0.85):, :]
-    bottom_hue = hue[int(h * 0.85):, :]
-    bottom_sat_region = saturation[int(h * 0.85):, :]
     has_swatches = False
     n_distinct_hues = 0
+    n_transitions = 0
 
-    if bottom_gray.size > 0:
-        col_means = np.mean(bottom_gray, axis=0)
-        col_diff = np.abs(np.diff(col_means.astype(float)))
-        n_transitions = np.sum(col_diff > 30)
+    def _detect_swatches_in_region(gray_region, hue_region, sat_region, axis):
+        """指定領域でカラバリスウォッチを検出。axis=0:列方向(横並び), axis=1:行方向(縦並び)"""
+        if gray_region.size == 0:
+            return False, 0, 0
+        means = np.mean(gray_region, axis=axis)
+        diff = np.abs(np.diff(means.astype(float)))
+        trans = int(np.sum(diff > 30))
+        sat_mask = sat_region > 50
+        n_hues = 0
+        if np.sum(sat_mask) > 50:
+            hues_in = hue_region[sat_mask]
+            hue_bins = np.round(hues_in / 15).astype(int)
+            n_hues = len(set(hue_bins))
+        found = trans > 4 and n_hues >= 3
+        return found, trans, n_hues
 
-        # カラバリ判定: 色の切り替わりだけでなく、複数の異なる色相が必要
-        # 商品が1色だけ下部にはみ出してるケースを除外
-        sat_mask = bottom_sat_region > 50
-        if np.sum(sat_mask) > 100:
-            hues_in_bottom = bottom_hue[sat_mask]
-            # 色相を15度刻みでグルーピングして何色あるか数える
-            hue_bins = np.round(hues_in_bottom / 15).astype(int)
-            n_distinct_hues = len(set(hue_bins))
+    # 下部15%（横並びスウォッチ）
+    found_b, trans_b, hues_b = _detect_swatches_in_region(
+        img_gray[int(h * 0.85):, :], hue[int(h * 0.85):, :], saturation[int(h * 0.85):, :], axis=0
+    )
+    # 左端20%（縦並びスウォッチ）
+    found_l, trans_l, hues_l = _detect_swatches_in_region(
+        img_gray[:, :int(w * 0.2)], hue[:, :int(w * 0.2)], saturation[:, :int(w * 0.2)], axis=1
+    )
+    # 右端20%（縦並びスウォッチ）
+    found_r, trans_r, hues_r = _detect_swatches_in_region(
+        img_gray[:, int(w * 0.8):], hue[:, int(w * 0.8):], saturation[:, int(w * 0.8):], axis=1
+    )
 
-        # カラバリあり = 色の切り替わりが多い AND 3色以上の異なる色相がある
-        has_swatches = n_transitions > 6 and n_distinct_hues >= 3
+    has_swatches = found_b or found_l or found_r
+    n_distinct_hues = max(hues_b, hues_l, hues_r)
+    n_transitions = max(trans_b, trans_l, trans_r)
 
     results["color_variation"] = {
         "bottom_color_ratio": round(bottom_has_colors * 100, 1),
         "has_swatches": has_swatches,
         "n_distinct_hues": n_distinct_hues,
-        "n_transitions": int(n_transitions) if bottom_gray.size > 0 else 0,
+        "n_transitions": n_transitions,
     }
 
     return results
