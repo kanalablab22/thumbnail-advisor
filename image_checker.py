@@ -317,7 +317,7 @@ def _analyze_image(pil_img: Image.Image) -> dict:
     n_distinct_hues = 0
     n_transitions = 0
 
-    def _detect_swatches_in_region(gray_region, hue_region, sat_region, axis):
+    def _detect_swatches_in_region(gray_region, hue_region, sat_region, axis, trans_threshold=6):
         """指定領域でカラバリスウォッチを検出。axis=0:列方向(横並び), axis=1:行方向(縦並び)"""
         if gray_region.size == 0:
             return False, 0, 0
@@ -326,24 +326,24 @@ def _analyze_image(pil_img: Image.Image) -> dict:
         trans = int(np.sum(diff > 30))
         sat_mask = sat_region > 50
         n_hues = 0
-        if np.sum(sat_mask) > 50:
+        if np.sum(sat_mask) > 100:
             hues_in = hue_region[sat_mask]
             hue_bins = np.round(hues_in / 15).astype(int)
             n_hues = len(set(hue_bins))
-        found = trans > 4 and n_hues >= 3
+        found = trans > trans_threshold and n_hues >= 3
         return found, trans, n_hues
 
-    # 下部15%（横並びスウォッチ）
+    # 下部15%（横並びスウォッチ）— 厳しめ（商品はみ出し対策）
     found_b, trans_b, hues_b = _detect_swatches_in_region(
-        img_gray[int(h * 0.85):, :], hue[int(h * 0.85):, :], saturation[int(h * 0.85):, :], axis=0
+        img_gray[int(h * 0.85):, :], hue[int(h * 0.85):, :], saturation[int(h * 0.85):, :], axis=0, trans_threshold=6
     )
-    # 左端20%（縦並びスウォッチ）
+    # 左端20%（縦並びスウォッチ）— やや緩め（小さい布見本対応）
     found_l, trans_l, hues_l = _detect_swatches_in_region(
-        img_gray[:, :int(w * 0.2)], hue[:, :int(w * 0.2)], saturation[:, :int(w * 0.2)], axis=1
+        img_gray[:, :int(w * 0.2)], hue[:, :int(w * 0.2)], saturation[:, :int(w * 0.2)], axis=1, trans_threshold=4
     )
-    # 右端20%（縦並びスウォッチ）
+    # 右端20%（縦並びスウォッチ）— やや緩め
     found_r, trans_r, hues_r = _detect_swatches_in_region(
-        img_gray[:, int(w * 0.8):], hue[:, int(w * 0.8):], saturation[:, int(w * 0.8):], axis=1
+        img_gray[:, int(w * 0.8):], hue[:, int(w * 0.8):], saturation[:, int(w * 0.8):], axis=1, trans_threshold=4
     )
 
     has_swatches = found_b or found_l or found_r
