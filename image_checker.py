@@ -341,6 +341,7 @@ def _analyze_image(pil_img: Image.Image) -> dict:
         "bottom_color_ratio": round(bottom_has_colors * 100, 1),
         "has_swatches": has_swatches,
         "n_distinct_hues": n_distinct_hues,
+        "n_transitions": int(n_transitions) if bottom_gray.size > 0 else 0,
     }
 
     return results
@@ -555,12 +556,13 @@ def _compute_scores(analysis: dict, genre: str = None) -> dict:
     # 7. カラバリ表示（実際に複数色のスウォッチ/カラードットがあるかで判定）
     has_sw = analysis["color_variation"]["has_swatches"]
     n_hues = analysis["color_variation"]["n_distinct_hues"]
+    n_transitions = analysis["color_variation"].get("n_transitions", 0)
     if has_sw and n_hues >= 4:
         scores["color_variation"] = 5  # 豊富なカラバリ表示
     elif has_sw:
         scores["color_variation"] = 4  # カラバリ表示あり
-    elif n_hues >= 3:
-        scores["color_variation"] = 3  # カラバリっぽい表示あり
+    elif n_transitions > 4 and n_hues >= 5:
+        scores["color_variation"] = 3  # カラバリっぽい表示あり（色の切り替わり＋5色以上）
     else:
         scores["color_variation"] = 2  # カラバリ表示なし
 
@@ -695,6 +697,11 @@ def check_image(image: Image.Image, filename: str = "image.jpg", genre: str = No
     total_score = _calc_total(scores, genre)
     grade, grade_msg = _get_grade(total_score)
 
+    # 白抜き判定（アドバイス上書き用）
+    _has_text = analysis["text_amount"]["has_text_overlay"]
+    _ws_effective = analysis["whitespace"]["effective"]
+    is_plain_cutout = not _has_text and _ws_effective > 50
+
     # チェック結果をリスト化
     results = []
     for cid, info in CRITERIA_INFO.items():
@@ -703,11 +710,17 @@ def check_image(image: Image.Image, filename: str = "image.jpg", genre: str = No
         s = scores.get(cid, 3)
         adv = info["advice"][s]
         level = adv["p"]  # "low", "medium", "high"
+        title = adv["t"]
+        detail = adv["d"]
+        # 白抜き画像でbackground=3のとき、アドバイスを差し替え
+        if cid == "background" and s == 3 and is_plain_cutout:
+            title = "スタイリングでCTRをアップ"
+            detail = "白抜き写真は楽天ガイドライン的にはOKですが、スタイリング背景（布・木目・小物）やモデル着用写真に変えると一覧画面でのクリック率が大幅にアップします"
         results.append(CheckResult(
             name=cid,
             passed=(level != "high"),
-            value=adv["t"],
-            detail=adv["d"],
+            value=title,
+            detail=detail,
             level=level,
             score_value=s,
         ))
