@@ -363,6 +363,9 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
                 report = check_image(pil_img, uploaded_file.name, genre=active_genre)
                 total = report.score
                 grade, grade_msg = get_grade(total)
+                # デバッグ: ジャンル別スコアリングが効いてるか確認用（後で消す）
+                if active_genre:
+                    st.caption(f"🔧 デバッグ: genre='{active_genre}' / score={total}")
             except Exception as e:
                 st.error(f"解析エラー: {type(e).__name__}: {e}")
                 import traceback
