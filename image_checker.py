@@ -207,11 +207,11 @@ def _analyze_image(pil_img: Image.Image) -> dict:
     peripheral_bg_edges = edges & bg_mask.astype(np.uint8) & peripheral_mask.astype(np.uint8)
     peripheral_bg_edge_ratio = np.sum(peripheral_bg_edges > 0) / max(np.sum(bg_mask & peripheral_mask), 1)
 
-    # テキスト有無の総合判定
-    # 周辺エリアの背景上にエッジが多い＝テキストがある
-    has_text_on_bg = peripheral_bg_edge_ratio > 0.05  # 周辺の背景エッジ5%以上
+    # テキスト有無の総合判定（3条件のOR）
+    has_text_on_bg = peripheral_bg_edge_ratio > 0.05       # 周辺の背景エッジ5%以上
     has_text_on_peripheral = peripheral_edge_ratio > 0.08  # 周辺エリア全体のエッジ8%以上
-    has_text_overlay = has_text_on_bg or has_text_on_peripheral
+    has_text_by_density = edge_density > 0.06 and text_area_ratio > 0.15  # 全体エッジ密度が高い＋テキストエリア広い
+    has_text_overlay = has_text_on_bg or has_text_on_peripheral or has_text_by_density
 
     # テキスト量スコア用の指標（周辺エリア密度 × 100 でパーセント表記）
     if has_text_overlay:
