@@ -339,14 +339,14 @@ def _analyze_image(pil_img: Image.Image) -> dict:
 # 各ジャンルで「重み」と「閾値の調整」を定義
 # 未定義の項目はデフォルト（汎用）基準を使う
 GENRE_SCORING = {
-    "バッグ・財布・小物（レディース）": {
+    "財布・バッグ・小物（レディース）": {
         # ラシエム・スタイルオンバッグ系：余白多め、くすみカラー、テキスト控えめ
         "weights": {"whitespace": 1.0, "text_amount": 1.0, "color_tone": 1.0, "composition": 1.1},
         "whitespace": {"ideal": [15, 35], "ok": [10, 45]},
         "text_amount": {"ideal": [10, 40], "ok": [5, 55]},
         "color_tone": {"max_saturation": 70, "max_high_sat": 10},  # くすみカラー重視
     },
-    "バッグ・財布・小物（メンズ）": {
+    "財布・バッグ・小物（メンズ）": {
         # GRAV・DEVICE系：ダーク系OK、テキスト訴求あり、高級感
         "weights": {"whitespace": 0.9, "text_amount": 1.2, "color_tone": 0.8},
         "whitespace": {"ideal": [12, 35], "ok": [8, 45]},

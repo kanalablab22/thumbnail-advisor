@@ -291,8 +291,8 @@ with col_kw:
     )
     GENRE_OPTIONS = [
         "自動判定",
-        "バッグ・財布・小物（レディース）",
-        "バッグ・財布・小物（メンズ）",
+        "財布・バッグ・小物（レディース）",
+        "財布・バッグ・小物（メンズ）",
         "ファッション（レディース）",
         "ファッション（メンズ）",
         "食品・グルメ",
@@ -315,7 +315,7 @@ if selected_genre == "自動判定":
     detected = detect_genre(search_keyword) if search_keyword else None
     # detect_genreの結果をプルダウンのジャンル名にマッピング
     _genre_map = {
-        "バッグ・財布": "バッグ・財布・小物（レディース）",  # デフォルトはレディース
+        "バッグ・財布": "財布・バッグ・小物（レディース）",  # デフォルトはレディース
         "ファッション": "ファッション（レディース）",
         "食品・グルメ": "食品・グルメ",
         "インテリア・家具": "インテリア・家具",
@@ -330,7 +330,7 @@ if selected_genre == "自動判定":
         kw_lower = search_keyword.lower()
         if any(w in kw_lower for w in ["メンズ", "mens", "男性", "紳士"]):
             if detected == "バッグ・財布":
-                _genre_map["バッグ・財布"] = "バッグ・財布・小物（メンズ）"
+                _genre_map["バッグ・財布"] = "財布・バッグ・小物（メンズ）"
             elif detected == "ファッション":
                 _genre_map["ファッション"] = "ファッション（メンズ）"
     active_genre = _genre_map.get(detected) if detected else None
