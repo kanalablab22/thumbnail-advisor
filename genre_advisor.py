@@ -101,7 +101,29 @@ GENRE_ADVICE = {
             },
         ],
     },
-    "ファッション": {
+    "バッグ・財布・小物（メンズ）": {
+        "icon": "👝",
+        "reference_shops": "GRAV / DEVICE / MURA",
+        "tips": [
+            {
+                "title": "キャッチコピーで世界観を訴求",
+                "detail": "「身軽で自由に。」「ほめられ上手の」のようなライフスタイル系コピーが効果的。メンズ革小物は機能だけでなく所有感・満足感の訴求が刺さります。",
+            },
+            {
+                "title": "ダーク系・高級感のある背景もOK",
+                "detail": "メンズ革小物はダークグレー〜黒の背景で高級感を出すのも有効。重厚感のあるトーンで大人の男性に訴求しましょう。明るい背景でもOKですが統一感が大事。",
+            },
+            {
+                "title": "ランキング・実績バッジを積極活用",
+                "detail": "「楽天ランキング1位」「累計○万個突破」は男性の購買決定に強く効きます。上部か右下に小さく配置するのが定番。",
+            },
+            {
+                "title": "着用写真＋物撮りの使い分け",
+                "detail": "メンズはポケットに入れた着用写真でサイズ感を伝えつつ、メインは物撮りで質感をアピール。カラバリがあれば並べて「選べる楽しさ」も訴求。",
+            },
+        ],
+    },
+    "ファッション（レディース）": {
         "icon": "👗",
         "reference_shops": "Dark Angel / HUG.U / 神戸レタス",
         "tips": [
@@ -120,6 +142,28 @@ GENRE_ADVICE = {
             {
                 "title": "スマホ150pxで何の商品かわかるか",
                 "detail": "楽天ユーザーの8割以上がスマホ。検索結果一覧の小さなサムネイルでも商品がはっきり見える構図が最優先です。",
+            },
+        ],
+    },
+    "ファッション（メンズ）": {
+        "icon": "👔",
+        "reference_shops": "SPU / MinoriTY / ジギーズショップ",
+        "tips": [
+            {
+                "title": "モデル全身着用がほぼ必須",
+                "detail": "メンズファッションもモデル着用が基本。全身のシルエットとサイズ感が伝わる写真が最優先。SPU・MinoriTYは全てモデル着用で統一。",
+            },
+            {
+                "title": "モノトーン・シンプルな背景で統一",
+                "detail": "白〜ライトグレーの背景が主流。カラフルな背景は避けて、商品（服）の色味が正確に伝わる撮影を。",
+            },
+            {
+                "title": "コーディネート提案で「着回し」を訴求",
+                "detail": "メンズは「何と合わせたらいい？」がハードル。コーデ例を小さく入れたり、「○通り着回し」の訴求が効果的。",
+            },
+            {
+                "title": "テキストは控えめ、写真で勝負",
+                "detail": "メンズファッションはテキスト少なめが主流。入れるなら「送料無料」「ランキング1位」程度。写真のクオリティが全て。",
             },
         ],
     },
@@ -398,13 +442,24 @@ def detect_genre(keyword: str) -> str:
     return best_genre
 
 
-def get_genre_advice(keyword: str) -> dict:
-    """キーワードからジャンルを判別してアドバイスを返す"""
-    genre = detect_genre(keyword)
-    if genre and genre in GENRE_ADVICE:
-        advice = GENRE_ADVICE[genre]
+# プルダウン名 → GENRE_ADVICEキーのマッピング（プルダウンの名前が長い場合の対応）
+_GENRE_ALIAS = {
+    "バッグ・財布・小物（レディース）": "バッグ・財布",
+    "バッグ・財布・小物（メンズ）": "バッグ・財布・小物（メンズ）",
+    "ファッション（レディース）": "ファッション（レディース）",
+    "ファッション（メンズ）": "ファッション（メンズ）",
+}
+
+
+def get_genre_advice(keyword: str, override_genre: str = None) -> dict:
+    """キーワードからジャンルを判別してアドバイスを返す（override_genreで直接指定も可能）"""
+    genre = override_genre if override_genre else detect_genre(keyword)
+    # プルダウン名をGENRE_ADVICEキーに変換
+    advice_key = _GENRE_ALIAS.get(genre, genre) if genre else None
+    if advice_key and advice_key in GENRE_ADVICE:
+        advice = GENRE_ADVICE[advice_key]
         return {
-            "genre": genre,
+            "genre": genre or advice_key,
             "icon": advice["icon"],
             "reference_shops": advice["reference_shops"],
             "tips": advice["tips"],

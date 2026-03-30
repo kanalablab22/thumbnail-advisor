@@ -464,8 +464,8 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
         """, unsafe_allow_html=True)
 
     # ===== ジャンル別アドバイス（検索結果プレビューの上に表示） =====
-    if search_keyword:
-        genre_info = get_genre_advice(search_keyword)
+    if search_keyword or active_genre:
+        genre_info = get_genre_advice(search_keyword or "", override_genre=active_genre)
         st.markdown("---")
         st.markdown(f"""
         <div style="background: linear-gradient(135deg, #e8f4f8 0%, #f0e6f6 100%);
