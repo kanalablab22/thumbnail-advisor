@@ -265,6 +265,11 @@ st.markdown("""
 <div class="app-header">
     <div class="app-title">🎨 楽天サムネイル アドバイザー</div>
     <div class="app-desc">画像をアップロードするだけ → 自動解析 → スコア＆改善アドバイス</div>
+    <div style="margin-top:12px; font-size:0.85rem; color:#666; line-height:1.8;">
+        ① 検索キーワードを入力（例：「レディース 財布 本革」）→ ジャンル別アドバイスが表示されます<br>
+        ② サムネイル画像をアップロード → 7項目のスコアと改善ポイントが表示されます<br>
+        ③ 検索結果プレビューで、実際の楽天検索に並んだときの見え方を確認できます
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
