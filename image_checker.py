@@ -480,14 +480,17 @@ def _compute_scores(analysis: dict, genre: str = None) -> dict:
     sb = analysis["background"]["simple_blocks"]
     has_border = analysis["background"]["has_border"]
     avg_std = analysis["background"]["avg_std"]
+    ws_effective = analysis["whitespace"]["effective"]
     if has_border:
         scores["background"] = 1  # 枠線はガイドライン違反
     elif sb >= 8 and avg_std < 50:
         scores["background"] = 5  # きれいな白背景 or 統一感あるスタイリング背景
+    elif ws_effective >= 20 and avg_std < 65:
+        scores["background"] = 5  # 白背景＋モデル着用等（背景自体はシンプル）
     elif sb >= 5:
         scores["background"] = 4  # おおむね良い背景
-    elif sb >= 3:
-        scores["background"] = 3  # やや雑多だが許容範囲
+    elif sb >= 3 or (ws_effective >= 15 and avg_std < 70):
+        scores["background"] = 4  # ある程度の余白あり
     elif avg_std < 60:
         scores["background"] = 3  # スタイリング背景（多少複雑でもOK）
     else:
