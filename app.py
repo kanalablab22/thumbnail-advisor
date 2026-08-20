@@ -8,6 +8,7 @@ import streamlit.components.v1 as components
 import numpy as np
 from PIL import Image
 import io
+import re
 import base64
 from image_checker import check_image, ImageCheckReport, CRITERIA_INFO
 
@@ -539,7 +540,13 @@ for file_idx, uploaded_file in enumerate(uploaded_files):
                         items = search_rakuten_items(search_keyword, rakuten_app_id, hits=14, access_key=rakuten_access_key)
                     except Exception as e:
                         items = []
-                        st.error(f"楽天API取得エラー: {e}")
+                        # エラー文にURL（＝認証キー）が混ざるのでマスクしてから表示
+                        msg = str(e)
+                        for secret in (rakuten_app_id, rakuten_access_key):
+                            if secret:
+                                msg = msg.replace(secret, "***")
+                        msg = re.sub(r"(applicationId|accessKey)=[^&\s]+", r"\1=***", msg)
+                        st.error(f"楽天API取得エラー: {msg}")
 
                 if items:
                     import random

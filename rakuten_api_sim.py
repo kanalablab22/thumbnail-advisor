@@ -15,7 +15,7 @@ def search_rakuten_items(keyword: str, app_id: str, hits: int = 12, access_key: 
     楽天商品検索APIで商品データを取得
     Returns: [{name, price, image_url, shop_name, review_avg, review_count}, ...]
     """
-    url = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20220601"
+    url = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701"
     params = {
         "applicationId": app_id,
         "keyword": keyword,
@@ -23,19 +23,21 @@ def search_rakuten_items(keyword: str, app_id: str, hits: int = 12, access_key: 
         "sort": "standard",
         "imageFlag": 1,
     }
-    if access_key:
-        params["accessKey"] = access_key
     headers = {
         "Referer": "https://thumbnail-advisor-6qspbn26sdqwlcryashtjn.streamlit.app/",
         "Origin": "https://thumbnail-advisor-6qspbn26sdqwlcryashtjn.streamlit.app",
     }
+    # accessKey はヘッダーで送る（クエリだとエラー文にキーが露出する）
+    if access_key:
+        headers["accessKey"] = access_key
     resp = requests.get(url, params=params, headers=headers, timeout=15)
     resp.raise_for_status()
     data = resp.json()
 
     items = []
     for item_data in data.get("Items", []):
-        item = item_data.get("Item", {})
+        # formatVersion=1 は {"Item": {...}} 入れ子、=2 はフラット
+        item = item_data.get("Item", item_data) if isinstance(item_data, dict) else {}
         images = item.get("mediumImageUrls", [])
         image_url = images[0]["imageUrl"] if images else ""
         # 楽天APIの画像URLは128x128。大きい画像に変換
